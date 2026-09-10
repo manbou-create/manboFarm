@@ -1,0 +1,5486 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+<title>マンボウFarm STEP31 - 本格オンラインPvP</title>
+
+<style>
+
+*{
+    box-sizing:border-box;
+    user-select:none;
+}
+
+html,body{
+    margin:0;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:#061827;
+    font-family:Arial,"Noto Sans JP",sans-serif;
+}
+
+canvas{
+    display:block;
+}
+
+
+/* =====================================================
+   HUD
+===================================================== */
+
+#hud{
+    position:fixed;
+    left:18px;
+    top:18px;
+    color:white;
+    z-index:10;
+    pointer-events:none;
+    text-shadow:0 2px 5px #000;
+}
+
+#title{
+    font-size:25px;
+    font-weight:bold;
+    margin-bottom:8px;
+}
+
+#hpBox,
+#enemyHpBox{
+    background:#17232c;
+    border:2px solid white;
+    border-radius:8px;
+    overflow:hidden;
+}
+
+#hpBox{
+    width:280px;
+    height:24px;
+}
+
+#enemyHpBox{
+    height:22px;
+}
+
+#hp{
+    width:100%;
+    height:100%;
+    background:#ff4b5c;
+    transition:width .12s;
+}
+
+#enemyHp{
+    width:100%;
+    height:100%;
+    background:#ff8b3d;
+    transition:width .12s;
+}
+
+#hpText,
+#enemyHpText{
+    margin-top:4px;
+    font-size:14px;
+}
+
+#stats{
+    margin-top:10px;
+    font-size:15px;
+    line-height:1.7;
+}
+
+
+/* =====================================================
+   Enemy HUD
+===================================================== */
+
+#enemyHud{
+    position:fixed;
+    right:18px;
+    top:18px;
+    width:280px;
+    color:white;
+    text-align:right;
+    z-index:10;
+    text-shadow:0 2px 5px #000;
+}
+
+
+/* =====================================================
+   Combo
+===================================================== */
+
+#combo{
+    position:fixed;
+    left:50%;
+    bottom:180px;
+    transform:translateX(-50%);
+    color:white;
+    font-size:34px;
+    font-weight:bold;
+    text-shadow:0 3px 10px #000;
+    z-index:20;
+    opacity:0;
+    transition:opacity .1s;
+    pointer-events:none;
+}
+
+#combo.show{
+    opacity:1;
+}
+
+
+/* =====================================================
+   Lock On
+===================================================== */
+
+#lockText{
+    position:fixed;
+    left:50%;
+    top:17%;
+    transform:translateX(-50%);
+    color:#8ff5ff;
+    font-size:18px;
+    font-weight:bold;
+    text-shadow:0 2px 6px #000;
+    z-index:20;
+    opacity:0;
+    transition:opacity .15s;
+    pointer-events:none;
+}
+
+#lockText.show{
+    opacity:1;
+}
+
+
+/* =====================================================
+   Message
+===================================================== */
+
+#message{
+    position:fixed;
+    left:50%;
+    top:42%;
+    transform:translate(-50%,-50%);
+    color:white;
+    font-size:40px;
+    font-weight:bold;
+    text-align:center;
+    text-shadow:0 4px 14px #000;
+    z-index:50;
+    pointer-events:none;
+    opacity:0;
+}
+
+
+/* =====================================================
+   Crosshair
+===================================================== */
+
+#crosshair{
+    position:fixed;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+    width:18px;
+    height:18px;
+    z-index:15;
+    pointer-events:none;
+}
+
+#crosshair::before,
+#crosshair::after{
+    content:"";
+    position:absolute;
+    background:white;
+    box-shadow:0 0 5px black;
+}
+
+#crosshair::before{
+    width:18px;
+    height:2px;
+    left:0;
+    top:8px;
+}
+
+#crosshair::after{
+    width:2px;
+    height:18px;
+    left:8px;
+    top:0;
+}
+
+
+/* =====================================================
+   Damage
+===================================================== */
+
+#damageLayer{
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    z-index:40;
+}
+
+.damage{
+    position:absolute;
+    color:white;
+    font-size:25px;
+    font-weight:bold;
+    text-shadow:0 2px 6px #000;
+    animation:damageUp .7s ease-out forwards;
+}
+
+@keyframes damageUp{
+
+    from{
+        opacity:1;
+        transform:translate(-50%,0) scale(1);
+    }
+
+    to{
+        opacity:0;
+        transform:translate(-50%,-70px) scale(1.25);
+    }
+
+}
+
+
+/* =====================================================
+   Skill Bar
+===================================================== */
+
+#skillBar{
+    position:fixed;
+    left:50%;
+    bottom:25px;
+    transform:translateX(-50%);
+    display:flex;
+    gap:10px;
+    z-index:20;
+}
+
+.skill{
+    width:78px;
+    height:78px;
+    background:rgba(5,20,30,.9);
+    border:2px solid rgba(255,255,255,.5);
+    border-radius:14px;
+    color:white;
+    position:relative;
+    text-align:center;
+    box-shadow:0 6px 20px rgba(0,0,0,.45);
+}
+
+.skillKey{
+    position:absolute;
+    left:7px;
+    top:5px;
+    font-size:17px;
+    font-weight:bold;
+}
+
+.skillName{
+    position:absolute;
+    width:100%;
+    left:0;
+    bottom:8px;
+    font-size:11px;
+}
+
+.cooldown{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:23px;
+    font-weight:bold;
+    background:rgba(0,0,0,.58);
+    border-radius:12px;
+    opacity:0;
+}
+
+.skill.cooling .cooldown{
+    opacity:1;
+}
+
+
+/* =====================================================
+   Controls
+===================================================== */
+
+#controls{
+    position:fixed;
+    right:18px;
+    bottom:18px;
+    background:rgba(0,0,0,.48);
+    color:white;
+    padding:13px 16px;
+    border-radius:12px;
+    font-size:13px;
+    line-height:1.7;
+    z-index:20;
+}
+
+#controls.hidden{
+    opacity:0;
+    pointer-events:none;
+}
+
+
+/* =====================================================
+   Start
+===================================================== */
+
+#start{
+    position:fixed;
+    inset:0;
+    background:rgba(0,20,35,.86);
+    z-index:100;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:white;
+    text-align:center;
+}
+
+#startBox{
+    max-width:680px;
+    padding:35px;
+    background:rgba(8,35,52,.97);
+    border:1px solid rgba(255,255,255,.25);
+    border-radius:20px;
+    box-shadow:0 20px 70px #000;
+}
+
+#startBox h1{
+    font-size:36px;
+    margin:0 0 10px;
+}
+
+#startBox h2{
+    margin:5px 0 15px;
+}
+
+#startBox p{
+    line-height:1.8;
+}
+
+#startBtn{
+    margin-top:15px;
+    border:0;
+    padding:15px 45px;
+    border-radius:12px;
+    background:#26aeea;
+    color:white;
+    font-size:18px;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+#startBtn:hover{
+    filter:brightness(1.15);
+}
+
+
+#hitMarker{position:fixed;left:50%;top:50%;width:36px;height:36px;transform:translate(-50%,-50%) scale(.6);opacity:0;pointer-events:none;z-index:50}
+#hitMarker:before,#hitMarker:after{content:"";position:absolute;left:16px;top:3px;width:3px;height:30px;background:#fff;box-shadow:0 0 8px #fff}
+#hitMarker:before{transform:rotate(45deg)}#hitMarker:after{transform:rotate(-45deg)}
+#hitMarker.show{animation:hitmarker .18s ease-out forwards}
+@keyframes hitmarker{0%{opacity:1;transform:translate(-50%,-50%) scale(.6)}50%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.25)}}
+#lockTargetRing{position:fixed;left:50%;top:50%;width:78px;height:78px;margin:-39px;border:2px solid rgba(255,225,80,.9);border-radius:50%;opacity:0;pointer-events:none;z-index:30}
+#lockTargetRing.show{opacity:1;animation:lockring .8s ease-in-out infinite alternate}
+@keyframes lockring{from{transform:scale(.9)}to{transform:scale(1.08)}}
+
+/* STEP24 combat impact polish */
+#hitMarker.show{filter:drop-shadow(0 0 9px #fff)}
+
+/* STEP24 combo/lock-on polish */
+#lockTargetRing{transition:opacity .12s,transform .12s}
+
+#pvpStatus{
+    position:fixed;
+    left:50%;
+    top:82px;
+    transform:translateX(-50%);
+    padding:7px 14px;
+    border:1px solid rgba(255,255,255,.35);
+    border-radius:999px;
+    background:rgba(0,20,35,.62);
+    color:white;
+    font-size:12px;
+    z-index:30;
+    pointer-events:none;
+    text-shadow:0 2px 5px #000;
+}
+
+#onlineBtn{
+    margin-top:10px;
+    border:1px solid rgba(255,255,255,.35);
+    padding:12px 32px;
+    border-radius:12px;
+    background:#173d55;
+    color:white;
+    font-size:16px;
+    font-weight:bold;
+    cursor:pointer;
+}
+#pvpCountdown{position:fixed;inset:0;z-index:350;display:none;align-items:center;justify-content:center;pointer-events:none;background:radial-gradient(circle at center,rgba(0,30,55,.22),rgba(0,0,0,.58));}
+#pvpCountdown .countBox{text-align:center;text-shadow:0 8px 30px #000;}
+#pvpCountdown .countLabel{font-size:20px;letter-spacing:.35em;font-weight:800;opacity:.9;}
+#pvpCountdown .countNum{font-size:min(18vw,170px);font-weight:1000;line-height:1;transform:scale(.7);opacity:0;}
+#pvpCountdown .countNum.pop{animation:countPop .72s cubic-bezier(.15,.8,.2,1) forwards;}
+@keyframes countPop{0%{transform:scale(.65);opacity:0}35%{transform:scale(1.18);opacity:1}100%{transform:scale(1);opacity:1}}
+#pvpCountdown .fightText{font-size:min(12vw,110px);font-weight:1000;letter-spacing:.08em;color:#fff;animation:fightFlash .9s ease-out forwards;}
+@keyframes fightFlash{0%{transform:scale(.45);opacity:0}35%{transform:scale(1.15);opacity:1}100%{transform:scale(1.02);opacity:0}}
+#onlinePanel{
+    position:fixed;
+    inset:0;
+    z-index:300;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    background:
+      radial-gradient(circle at 50% 35%,rgba(25,150,210,.18),transparent 38%),
+      rgba(0,7,16,.92);
+    backdrop-filter:blur(10px);
+}
+#onlineBox{
+    width:min(560px,92vw);
+    padding:30px;
+    border-radius:26px;
+    background:linear-gradient(180deg,rgba(8,38,57,.99),rgba(4,22,35,.99));
+    color:white;
+    text-align:center;
+    box-shadow:0 25px 100px #000;
+    border:1px solid rgba(143,245,255,.22);
+}
+.onlineBadge{
+    display:inline-block;
+    padding:6px 12px;
+    border:1px solid rgba(143,245,255,.35);
+    border-radius:999px;
+    color:#8ff5ff;
+    font-size:11px;
+    letter-spacing:2px;
+}
+#onlineBox h2{font-size:32px;margin:12px 0 4px}
+.matchLine{font-size:14px;color:#b8d8e5;margin:5px 0 18px}
+.pulseDot{
+    display:inline-block;width:9px;height:9px;border-radius:50%;
+    background:#35e68a;margin-right:7px;box-shadow:0 0 14px #35e68a;
+    animation:pulseDot 1s infinite;
+}
+@keyframes pulseDot{50%{opacity:.35;transform:scale(.72)}}
+.onlineHint{color:#a8c4d0;font-size:13px;margin:0 0 15px}
+.onlineAction{
+    margin:5px;
+    padding:12px 20px;
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:12px;
+    cursor:pointer;
+    font-weight:bold;
+    color:white;
+    background:#173d55;
+    font-size:15px;
+}
+.onlineAction:hover{filter:brightness(1.16);transform:translateY(-1px)}
+.primaryAction{background:#168fc2}
+.orLine{display:flex;align-items:center;gap:10px;color:#587989;margin:12px 0}
+.orLine:before,.orLine:after{content:"";height:1px;background:rgba(255,255,255,.12);flex:1}
+#onlineBox input{
+    width:min(340px,100%);
+    padding:13px;
+    margin:3px 0;
+    border-radius:11px;
+    border:1px solid rgba(255,255,255,.22);
+    background:#091c29;
+    color:white;
+    font-size:19px;
+    text-align:center;
+    outline:none;
+}
+#onlineBox input:focus{border-color:#8ff5ff;box-shadow:0 0 0 3px rgba(143,245,255,.08)}
+#onlineStatus{
+    min-height:46px;
+    margin:18px 0 10px;
+    line-height:1.6;
+    color:#8ff5ff;
+    font-size:13px;
+}
+#onlineWaiting{margin-top:5px}
+.waitingCard{
+    padding:25px 18px 20px;
+    border-radius:20px;
+    background:rgba(0,15,26,.55);
+    border:1px solid rgba(255,255,255,.12);
+}
+.waitingIcon{
+    width:70px;height:70px;margin:0 auto 10px;
+    display:flex;align-items:center;justify-content:center;
+    border-radius:50%;
+    background:rgba(34,181,115,.12);
+    border:1px solid rgba(34,181,115,.4);
+    font-size:34px;
+    animation:waitFloat 1.8s ease-in-out infinite;
+}
+@keyframes waitFloat{50%{transform:translateY(-5px) scale(1.03)}}
+.waitingTitle{font-size:23px;font-weight:bold}
+.waitingSub{color:#91afbc;font-size:13px;margin-top:7px}
+#roomCode{
+    font-size:31px;
+    font-weight:900;
+    letter-spacing:5px;
+    margin:16px 0 7px;
+}
+.waitingDots{height:12px}
+.waitingDots i{
+    display:inline-block;width:7px;height:7px;margin:0 3px;
+    border-radius:50%;background:#8ff5ff;opacity:.25;
+    animation:dotWait 1.2s infinite;
+}
+.waitingDots i:nth-child(2){animation-delay:.18s}
+.waitingDots i:nth-child(3){animation-delay:.36s}
+@keyframes dotWait{0%,100%{opacity:.2;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
+#onlineStart{
+    display:none;
+    background:#22b573;
+    color:white;
+    padding:13px 30px;
+    border:0;
+    border-radius:12px;
+    font-size:17px;
+    font-weight:bold;
+    cursor:pointer;
+    box-shadow:0 0 24px rgba(34,181,115,.22);
+}
+#onlineStart:hover{filter:brightness(1.12)}
+.closeAction{background:transparent;color:#91afbc}
+
+#pvpResult{position:fixed;inset:0;z-index:500;display:none;align-items:center;justify-content:center;background:rgba(0,8,18,.82);backdrop-filter:blur(6px)}
+#pvpResultBox{width:min(560px,90vw);padding:34px;border-radius:24px;background:rgba(8,28,43,.98);color:white;text-align:center;box-shadow:0 25px 100px #000}
+#pvpResultTitle{font-size:52px;font-weight:900;margin:5px 0 15px}
+#pvpResultText{font-size:18px;line-height:1.7;margin-bottom:20px}
+.pvpResultBtn{margin:5px;padding:13px 26px;border:0;border-radius:12px;cursor:pointer;font-size:16px;font-weight:bold}
+
+/* STEP30 online combat HUD/effects */
+#pvpEventFeed{position:fixed;left:50%;top:18%;transform:translateX(-50%);z-index:160;pointer-events:none;text-align:center;font-weight:900;font-size:28px;text-shadow:0 4px 18px #000;opacity:0;transition:opacity .15s,transform .15s}
+#pvpEventFeed.show{opacity:1;transform:translateX(-50%) scale(1.08)}
+#onlineCombatBadge{position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:90;display:none;padding:8px 18px;border:1px solid rgba(150,230,255,.35);border-radius:999px;background:rgba(0,15,28,.68);backdrop-filter:blur(8px);font-size:13px;font-weight:800;letter-spacing:1px}
+
+/* STEP31 combat feedback */
+#hitMarker.show{transform:translate(-50%,-50%) scale(1.18);}
+#pvpEventFeed.show{transform:translateX(-50%) scale(1.08);}
+#dangerVignette{position:fixed;inset:0;z-index:145;pointer-events:none;opacity:0;border:0 solid rgba(255,40,40,.45);box-shadow:inset 0 0 0 0 rgba(255,40,40,0);transition:opacity .2s;mix-blend-mode:screen;}
+#dangerVignette.show{opacity:1;animation:dangerPulse .72s ease-in-out infinite;}
+@keyframes dangerPulse{0%,100%{box-shadow:inset 0 0 70px 8px rgba(255,40,40,.18)}50%{box-shadow:inset 0 0 150px 22px rgba(255,40,40,.42)}}
+#counterFlash{position:fixed;left:50%;top:34%;transform:translate(-50%,-50%) scale(.7);z-index:370;pointer-events:none;opacity:0;font-size:min(7vw,72px);font-weight:1000;letter-spacing:.08em;text-shadow:0 5px 25px #000;}
+#counterFlash.show{animation:counterPop .7s cubic-bezier(.15,.8,.2,1) forwards;}
+@keyframes counterPop{0%{opacity:0;transform:translate(-50%,-50%) scale(.65)}22%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}100%{opacity:0;transform:translate(-50%,-50%) scale(1)}}
+
+
+/* STEP34 Ranked Matchmaking */
+#rankedPanel{position:fixed;inset:0;z-index:250;display:none;align-items:center;justify-content:center;background:rgba(3,10,24,.92);backdrop-filter:blur(10px)}
+#rankedBox{width:min(560px,92vw);padding:28px;border:1px solid rgba(120,190,255,.35);border-radius:24px;background:linear-gradient(145deg,rgba(11,26,50,.98),rgba(5,13,28,.98));box-shadow:0 25px 80px rgba(0,0,0,.55);text-align:center;color:#fff}
+#rankedBox h2{margin:8px 0 4px;font-size:30px}
+.rankBadge{display:inline-block;padding:7px 13px;border-radius:999px;background:rgba(80,160,255,.14);border:1px solid rgba(100,190,255,.35);font-weight:800;letter-spacing:.06em}
+.rankInfo{margin:18px 0;padding:16px;border-radius:16px;background:rgba(255,255,255,.055);text-align:left}
+.rankRow{display:flex;justify-content:space-between;gap:15px;margin:7px 0}
+.rankSearch{margin-top:18px;padding:16px;border-radius:16px;background:rgba(0,0,0,.18)}
+#rankedStatus{font-weight:800;margin:8px 0 14px}
+#rankedTimer{font-size:28px;font-weight:900;letter-spacing:.08em}
+#rankedRange{font-size:13px;opacity:.72;margin-top:6px}
+.rankBtn{width:100%;margin-top:10px;padding:13px;border:0;border-radius:12px;background:#163b66;color:#fff;font-weight:900;cursor:pointer}
+.rankBtn.primary{background:linear-gradient(135deg,#1976d2,#35a7ff)}
+.rankBtn.danger{background:#55263a}
+#rankMatchFound{display:none;margin-top:16px;padding:18px;border-radius:16px;background:rgba(35,130,255,.10);border:1px solid rgba(70,170,255,.28)}
+.vsNames{display:flex;justify-content:center;align-items:center;gap:22px;font-size:21px;font-weight:900;margin:12px 0}
+.vsNames .vs{font-size:14px;opacity:.6}
+
+</style>
+
+<style id="step28OnlineCss">
+#onlineNetHud{position:fixed;right:18px;top:18px;z-index:120;display:none;padding:9px 13px;border:1px solid rgba(130,230,255,.35);border-radius:14px;background:rgba(0,12,24,.72);backdrop-filter:blur(8px);font:700 13px system-ui;color:#dffaff;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+#onlineNetHud .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#42e88b;box-shadow:0 0 10px #42e88b;margin-right:7px}
+#onlineNetHud.warn .dot{background:#ffd35a;box-shadow:0 0 10px #ffd35a}
+#onlineNetHud.bad .dot{background:#ff5964;box-shadow:0 0 10px #ff5964}
+</style>
+
+<style>
+#rankPanel{margin:18px auto 0;max-width:520px;padding:14px 16px;border:1px solid rgba(130,220,255,.28);border-radius:16px;background:rgba(0,20,35,.72);box-shadow:0 0 24px rgba(0,170,255,.12)}
+.rankTop{display:flex;justify-content:space-between;align-items:center;gap:12px}.rankName{font-size:22px;font-weight:900}.rankRP{font-weight:800;color:#8fe9ff}.rankBar{height:7px;background:rgba(255,255,255,.12);border-radius:99px;overflow:hidden;margin-top:9px}.rankFill{height:100%;width:0%;background:linear-gradient(90deg,#55d6ff,#9b7cff);transition:width .35s}.rankMeta{display:flex;justify-content:space-between;font-size:12px;opacity:.75;margin-top:6px}
+#rankResult{margin-top:14px;padding:12px;border-radius:14px;background:rgba(255,255,255,.06);display:none}.rankDelta{font-size:28px;font-weight:1000}.rankStats{font-size:12px;opacity:.8;margin-top:4px}
+</style>
+
+<style id="farm-navigation-style">
+#farmBackButton{
+  position:fixed;left:18px;top:18px;z-index:9999;
+  padding:12px 18px;border:1px solid rgba(255,255,255,.25);
+  border-radius:13px;background:rgba(8,30,48,.88);
+  color:#fff;font-size:15px;font-weight:900;cursor:pointer;
+  backdrop-filter:blur(8px);box-shadow:0 8px 25px rgba(0,0,0,.25);
+  transition:transform .15s,filter .15s;
+}
+#farmBackButton:hover{transform:translateY(-2px);filter:brightness(1.15)}
+</style>
+
+</head>
+
+<body>
+
+<button id="farmBackButton" type="button">← 🏠 マンボウFarmへ戻る</button>
+<script id="farmNavigationScript">
+document.getElementById("farmBackButton")?.addEventListener("click",()=>{
+  location.href="index.html";
+});
+</script>
+
+
+
+<!-- =====================================================
+     START
+===================================================== -->
+
+<div id="start">
+
+    <div id="startBox">
+
+        <h1>🐟 マンボウFarm</h1>
+
+        <h2>STEP27</h2>
+
+        <p>
+            本格TPS戦闘 ＋ リアルタイムオンラインPvP
+        </p>
+
+        <p>
+            🖱️ マウス：カメラ<br>
+            WASD：移動<br>
+            左クリック：M1コンボ<br>
+            T：ロックオン<br>
+            Z：水弾<br>
+            X：突進<br>
+            C：回転アタック<br>
+            F：高速突撃<br>
+            Q：ダッシュ<br>
+            R：フラッシュステップ<br>
+            Space：上昇<br>
+            Ctrl：下降<br>
+            TAB：操作説明
+        </p>
+
+        <button id="startBtn">
+            BATTLE START
+        </button>
+        <br>
+        <button id="onlineBtn">
+            🌐 ONLINE PvP
+        </button><div id="rankPanel"><div class="rankTop"><div class="rankName" id="rankName">🥉 BRONZE</div><div class="rankRP" id="rankRP">1000 RP</div></div><div class="rankBar"><div class="rankFill" id="rankFill"></div></div><div class="rankMeta"><span id="rankNext">次のランクまで 200 RP</span><span id="rankRecord">0勝 0敗</span></div></div>
+
+
+    </div>
+
+</div>
+
+
+
+
+<!-- =====================================================
+     ONLINE MATCHMAKING / WAITING SCREEN
+===================================================== -->
+<div id="pvpCountdown"><div class="countBox"><div class="countLabel">ONLINE MATCH</div><div id="countNum" class="countNum">3</div></div></div>
+<div id="onlinePanel">
+  <div id="onlineBox">
+    <div class="onlineBadge">🌐 ONLINE MATCHMAKING</div>
+    <h2>マンボウPvP</h2>
+    <div class="matchLine"><span class="pulseDot"></span><span id="onlinePhase">対戦準備</span></div>
+
+    <div id="onlineMenu">
+      <p class="onlineHint">ルームを作成するか、6桁のコードで参加してください。</p>
+      <button class="onlineAction primaryAction" id="createRoomBtn">🎮 ルームを作成</button>
+      <div class="orLine"><span>OR</span></div>
+      <input id="joinRoomInput" inputmode="numeric" maxlength="6" placeholder="6桁のルームコード">
+      <button class="onlineAction" id="joinRoomBtn">🔗 ルームに参加</button>
+    </div>
+
+    <div id="onlineWaiting" style="display:none">
+      <div class="waitingCard">
+        <div class="waitingIcon">⚔️</div>
+        <div class="waitingTitle">対戦相手を待っています</div>
+        <div class="waitingSub" id="waitingSub">相手がルームに参加するまで待機中…</div>
+        <div id="roomCode">ROOM: ------</div>
+        <div class="waitingDots"><i></i><i></i><i></i></div>
+      </div>
+    </div>
+
+    <div id="onlineStatus">🔵 オンライン対戦を選択してください。</div>
+
+    <button id="onlineStart">⚔️ 対戦開始</button>
+    <button class="onlineAction closeAction" id="closeOnlineBtn">← 戻る</button>
+  </div>
+</div>
+
+
+<div id="onlineCombatBadge">● ONLINE • REALTIME PvP</div>
+<div id="pvpEventFeed"></div><div id="dangerVignette"></div><div id="counterFlash"></div>
+
+<div id="rankedPanel">
+  <div id="rankedBox">
+    <div class="rankBadge">🏆 RANKED MATCH</div>
+    <h2>ランクマッチ</h2>
+    <div class="rankInfo">
+      <div class="rankRow"><span>現在のランク</span><strong id="rankedMyRank">---</strong></div>
+      <div class="rankRow"><span>現在のRP</span><strong id="rankedMyRP">---</strong></div>
+      <div class="rankRow"><span>検索範囲</span><strong id="rankedRangeText">±100 RP</strong></div>
+    </div>
+
+    <div class="rankSearch">
+      <div id="rankedStatus">対戦相手を探す準備中…</div>
+      <div id="rankedTimer">00:00</div>
+      <div id="rankedRange">待機時間が長くなるほど検索範囲が広がります</div>
+      <button class="rankBtn primary" id="rankedSearchBtn">🔎 ランクマッチを検索</button>
+      <button class="rankBtn danger" id="rankedCancelBtn">← 戻る</button>
+    </div>
+
+    <div id="rankMatchFound">
+      <div>⚔️ MATCH FOUND!</div>
+      <div class="vsNames"><span id="rankedOpponentName">Opponent</span><span class="vs">VS</span><span>YOU</span></div>
+      <div id="rankedOpponentRank">---</div>
+      <button class="rankBtn primary" id="rankedRoomBtn">🌐 対戦ルームを作成</button>
+      <div style="font-size:12px;opacity:.65;margin-top:8px">※オンライン接続は既存のルーム方式を使用します。</div>
+    </div>
+  </div>
+</div>
+
+<div id="pvpResult"><div id="pvpResultBox"><div id="pvpResultTitle">VICTORY</div><div id="pvpResultText"></div><div id="rankResult"><div class="rankDelta" id="rankDelta"></div><div class="rankStats" id="rankStats"></div></div><button class="pvpResultBtn" id="pvpRematchBtn">🔄 再戦</button><button class="pvpResultBtn" id="pvpLobbyBtn">🚪 ロビーへ</button></div></div>
+
+<!-- =====================================================
+     HUD
+===================================================== -->
+
+<div id="hud">
+
+    <div id="title">
+        🐟 Mola Battle
+    </div>
+
+    <div id="hpBox">
+        <div id="hp"></div>
+    </div>
+
+    <div id="hpText">
+        HP 1000 / 1000
+    </div>
+
+    <div id="stats">
+
+        攻撃力：
+        <span id="attackStat">100</span>
+        <br>
+
+        防御力：
+        <span id="defenseStat">100</span>
+        <br>
+
+        ランク：
+        <span id="rankStat">D</span>
+        <br>
+
+        M1：
+        <span id="comboStat">0</span> / 4
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     Enemy HUD
+===================================================== -->
+
+<div id="enemyHud">
+
+    <div style="font-size:22px;font-weight:bold;">
+        敵マンボウ
+    </div>
+
+    <div id="enemyHpBox">
+        <div id="enemyHp"></div>
+    </div>
+
+    <div id="enemyHpText">
+        HP 1200 / 1200
+    </div>
+
+</div>
+
+
+<div id="combo">
+    M1 × 1
+</div>
+
+
+<div id="lockText">
+    🎯 LOCK ON
+</div>
+
+
+<div id="message"></div>
+
+<div id="pvpStatus">⚔️ PVP COMBAT · LOCK ON / COMBO / DODGE</div><div id="crosshair"></div><div id="hitMarker"></div><div id="lockTargetRing"></div>
+
+<div id="damageLayer"></div>
+
+
+<!-- =====================================================
+     Skill UI
+===================================================== -->
+
+<div id="skillBar">
+
+    <div class="skill" id="skillZ">
+        <div class="skillKey">Z</div>
+        <div class="skillName">水弾</div>
+        <div class="cooldown" id="coolZ"></div>
+    </div>
+
+    <div class="skill" id="skillX">
+        <div class="skillKey">X</div>
+        <div class="skillName">突進</div>
+        <div class="cooldown" id="coolX"></div>
+    </div>
+
+    <div class="skill" id="skillC">
+        <div class="skillKey">C</div>
+        <div class="skillName">回転</div>
+        <div class="cooldown" id="coolC"></div>
+    </div>
+
+    <div class="skill" id="skillF">
+        <div class="skillKey">F</div>
+        <div class="skillName">高速突撃</div>
+        <div class="cooldown" id="coolF"></div>
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     Controls
+===================================================== -->
+
+<div id="controls">
+
+    WASD：移動<br>
+    マウス：カメラ<br>
+    左クリック：M1<br>
+    T：ロックオン<br>
+    Z：水弾<br>
+    X：突進<br>
+    C：回転攻撃<br>
+    F：高速突撃<br>
+    Q：ダッシュ<br>
+    R：フラッシュステップ<br>
+    Space：上昇<br>
+    Ctrl：下降<br>
+    TAB：操作説明
+
+</div>
+
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script type="module">
+
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
+
+
+/* =====================================================
+   THREE
+===================================================== */
+
+const scene = new THREE.Scene();
+
+scene.fog = new THREE.FogExp2(
+    0x062338,
+    .018
+);
+
+
+const camera = new THREE.PerspectiveCamera(
+    70,
+    innerWidth / innerHeight,
+    .1,
+    1000
+);
+
+
+const renderer = new THREE.WebGLRenderer({
+    antialias:true,
+    powerPreference:"high-performance"
+});
+
+renderer.setSize(
+    innerWidth,
+    innerHeight
+);
+
+renderer.setPixelRatio(
+    Math.min(devicePixelRatio,2)
+);
+
+renderer.outputColorSpace =
+    THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.12;
+
+document.body.appendChild(
+    renderer.domElement
+);
+
+
+/* =====================================================
+   LIGHT
+===================================================== */
+
+scene.add(
+    new THREE.HemisphereLight(
+        0x9be9ff,
+        0x04111b,
+        2.2
+    )
+);
+
+
+const light =
+    new THREE.DirectionalLight(
+        0xffffff,
+        2.5
+    );
+
+light.position.set(
+    30,
+    50,
+    20
+);
+
+scene.add(light);
+
+
+/* =====================================================
+   WATER STAGE
+===================================================== */
+
+const worldSize = 100;
+
+
+const floor =
+    new THREE.Mesh(
+        new THREE.PlaneGeometry(
+            worldSize,
+            worldSize
+        ),
+        new THREE.MeshStandardMaterial({
+            color:0x0a4058,
+            roughness:1
+        })
+    );
+
+floor.rotation.x =
+    -Math.PI/2;
+
+floor.position.y =
+    -8;
+
+scene.add(floor);
+
+
+/* =====================================================
+   ROCKS
+===================================================== */
+
+function addRock(x,y,z,s){
+
+    const rock =
+        new THREE.Mesh(
+            new THREE.DodecahedronGeometry(
+                s,
+                1
+            ),
+            new THREE.MeshStandardMaterial({
+                color:0x18566b,
+                roughness:.9
+            })
+        );
+
+    rock.position.set(
+        x,
+        y,
+        z
+    );
+
+    rock.scale.y=.7;
+
+    scene.add(rock);
+
+}
+
+
+for(let i=0;i<55;i++){
+
+    addRock(
+        (Math.random()-.5)*90,
+        -6+Math.random()*5,
+        (Math.random()-.5)*90,
+        .6+Math.random()*2
+    );
+
+}
+
+
+/* =====================================================
+   WATER PARTICLES
+===================================================== */
+
+const particleGeo =
+    new THREE.BufferGeometry();
+
+const particlePositions=[];
+
+
+for(let i=0;i<1500;i++){
+
+    particlePositions.push(
+        (Math.random()-.5)*100,
+        (Math.random()-.5)*50,
+        (Math.random()-.5)*100
+    );
+
+}
+
+
+particleGeo.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(
+        particlePositions,
+        3
+    )
+);
+
+
+scene.add(
+    new THREE.Points(
+        particleGeo,
+        new THREE.PointsMaterial({
+            color:0xbcefff,
+            size:.08,
+            transparent:true,
+            opacity:.55
+        })
+    )
+);
+
+
+/* =====================================================
+   SUNFISH
+===================================================== */
+
+function createSunfish(
+    color=0x76d8ff
+){
+
+    const group = new THREE.Group();
+
+    /* =================================================
+       REALISTIC MOLA BODY
+       STEP20の座標系・向き・アニメーション互換を維持
+    ================================================= */
+
+    const skin = new THREE.MeshPhysicalMaterial({
+        color,
+        roughness:.42,
+        metalness:.015,
+        clearcoat:.32,
+        clearcoatRoughness:.25,
+        sheen:.12,
+        sheenRoughness:.5
+    });
+
+    const bellyColor =
+        new THREE.Color(color)
+        .offsetHSL(0,.02,.15);
+
+    const bellyMat = new THREE.MeshPhysicalMaterial({
+        color:bellyColor,
+        roughness:.55,
+        clearcoat:.16
+    });
+
+    const finColor =
+        new THREE.Color(color)
+        .offsetHSL(0,.02,-.10)
+        .getHex();
+
+    const finMat = new THREE.MeshPhysicalMaterial({
+        color:finColor,
+        roughness:.46,
+        metalness:.01,
+        clearcoat:.22,
+        clearcoatRoughness:.3,
+        transparent:true,
+        opacity:.94,
+        side:THREE.DoubleSide
+    });
+
+    const darkColor =
+        new THREE.Color(color)
+        .offsetHSL(0,0,-.30)
+        .getHex();
+
+    const darkMat = new THREE.MeshStandardMaterial({
+        color:darkColor,
+        roughness:.62
+    });
+
+    /* Main flattened body.
+       IMPORTANT: same orientation as the working STEP20. */
+    const body = new THREE.Mesh(
+        new THREE.SphereGeometry(2.25,56,40),
+        skin
+    );
+    body.name="body";
+    body.scale.set(.82,1.02,1.18);
+    group.add(body);
+
+    /* Soft belly */
+    const belly = new THREE.Mesh(
+        new THREE.SphereGeometry(1.72,40,28),
+        bellyMat
+    );
+    belly.name="belly";
+    belly.scale.set(.72,.56,.82);
+    belly.position.set(0,-.58,-.18);
+    group.add(belly);
+
+    /* Slight face volume */
+    const face = new THREE.Mesh(
+        new THREE.SphereGeometry(.82,36,28),
+        skin
+    );
+    face.name="face";
+    face.scale.set(.86,.78,.62);
+    face.position.set(0,.02,-1.62);
+    group.add(face);
+
+    /* Dorsal fin */
+    const topFin = new THREE.Mesh(
+        new THREE.ConeGeometry(.62,2.9,24,1,false),
+        finMat
+    );
+    topFin.name="topFin";
+    topFin.position.set(0,2.04,.05);
+    topFin.scale.set(.9,1,.30);
+    group.add(topFin);
+
+    /* Anal fin */
+    const bottomFin = topFin.clone();
+    bottomFin.name="bottomFin";
+    bottomFin.position.y=-2.04;
+    bottomFin.rotation.z=Math.PI;
+    group.add(bottomFin);
+
+    /* Pectoral fins */
+    const leftFin = new THREE.Mesh(
+        new THREE.ConeGeometry(.42,2.35,20,1,false),
+        finMat
+    );
+    leftFin.name="leftFin";
+    leftFin.rotation.z=Math.PI/2;
+    leftFin.position.set(-1.76,.05,-.15);
+    leftFin.scale.set(.72,1,.28);
+    group.add(leftFin);
+
+    const rightFin = leftFin.clone();
+    rightFin.name="rightFin";
+    rightFin.rotation.z=-Math.PI/2;
+    rightFin.position.x=1.76;
+    group.add(rightFin);
+
+    /* Characteristic rounded rear/clavus */
+    const rear = new THREE.Mesh(
+        new THREE.SphereGeometry(1.02,36,26),
+        finMat
+    );
+    rear.name="rearFin";
+    rear.scale.set(.55,.92,.26);
+    rear.position.z=1.92;
+    group.add(rear);
+
+    /* Eyes */
+    const eyeWhiteMat = new THREE.MeshPhysicalMaterial({
+        color:0xf7fbff,
+        roughness:.22,
+        clearcoat:.6
+    });
+
+    const irisMat = new THREE.MeshPhysicalMaterial({
+        color:0x101820,
+        roughness:.16,
+        metalness:.08,
+        clearcoat:.72
+    });
+
+    const highlightMat =
+        new THREE.MeshBasicMaterial({color:0xffffff});
+
+    function makeEye(x){
+        const eye = new THREE.Group();
+        eye.position.set(x,.56,-1.82);
+
+        const white = new THREE.Mesh(
+            new THREE.SphereGeometry(.27,28,22),
+            eyeWhiteMat
+        );
+        white.scale.set(1,.95,.55);
+        eye.add(white);
+
+        const iris = new THREE.Mesh(
+            new THREE.SphereGeometry(.15,22,18),
+            irisMat
+        );
+        iris.position.set(0,0,-.18);
+        iris.scale.set(1,1,.45);
+        eye.add(iris);
+
+        const highlight = new THREE.Mesh(
+            new THREE.SphereGeometry(.05,12,12),
+            highlightMat
+        );
+        highlight.position.set(-.05,.065,-.265);
+        eye.add(highlight);
+
+        group.add(eye);
+    }
+
+    makeEye(-.62);
+    makeEye(.62);
+
+    /* Cheeks */
+    const cheekMat = new THREE.MeshPhysicalMaterial({
+        color:darkColor,
+        roughness:.5,
+        transparent:true,
+        opacity:.25
+    });
+
+    const cheekL = new THREE.Mesh(
+        new THREE.SphereGeometry(.42,24,18),
+        cheekMat
+    );
+    cheekL.position.set(-.70,.02,-1.72);
+    cheekL.scale.set(.76,.70,.24);
+    group.add(cheekL);
+
+    const cheekR = cheekL.clone();
+    cheekR.position.x=.70;
+    group.add(cheekR);
+
+    /* Mouth */
+    const mouth = new THREE.Mesh(
+        new THREE.TorusGeometry(.23,.055,12,24,Math.PI*1.15),
+        new THREE.MeshStandardMaterial({
+            color:0x18232a,
+            roughness:.52
+        })
+    );
+    mouth.name="mouth";
+    mouth.rotation.x=-Math.PI/2;
+    mouth.rotation.z=Math.PI;
+    mouth.position.set(0,-.34,-1.94);
+    group.add(mouth);
+
+    /* Gill cover + three fine gill lines on each side */
+    const gillMat = new THREE.MeshBasicMaterial({
+        color:darkColor,
+        transparent:true,
+        opacity:.52
+    });
+
+    [-1,1].forEach(side=>{
+
+        const cover = new THREE.Mesh(
+            new THREE.SphereGeometry(.50,24,18),
+            skin
+        );
+        cover.position.set(side*1.10,.01,-1.48);
+        cover.scale.set(.32,.76,.20);
+        group.add(cover);
+
+        for(let i=0;i<3;i++){
+
+            const slit = new THREE.Mesh(
+                new THREE.BoxGeometry(.035,.30,.022),
+                gillMat
+            );
+
+            slit.position.set(
+                side*(1.22+i*.045),
+                -.10+i*.08,
+                -1.60
+            );
+
+            slit.rotation.z=side*.15;
+
+            group.add(slit);
+        }
+    });
+
+    /* Natural skin mottling */
+    const spotMat = new THREE.MeshBasicMaterial({
+        color:0xffffff,
+        transparent:true,
+        opacity:.075
+    });
+
+    for(let i=0;i<24;i++){
+
+        const a=Math.random()*Math.PI*2;
+        const r=.45+Math.random()*1.2;
+
+        const spot = new THREE.Mesh(
+            new THREE.SphereGeometry(
+                .035+Math.random()*.045,
+                8,
+                8
+            ),
+            spotMat
+        );
+
+        spot.position.set(
+            Math.cos(a)*r*.62,
+            Math.sin(a)*r*.80,
+            -1.02-Math.random()*.42
+        );
+
+        group.add(spot);
+    }
+
+    /* These names are intentionally kept identical to STEP20
+       so the existing combat/animation code remains untouched. */
+    group.userData.fins=[
+        topFin,
+        bottomFin,
+        leftFin,
+        rightFin
+    ];
+
+    group.userData.body=body;
+    group.userData.rear=rear;
+    group.userData.mouth=mouth;
+
+    return group;
+}
+
+/* =====================================================
+   PLAYER
+===================================================== */
+
+const player =
+    createSunfish(
+        0x6fdcff
+    );
+
+scene.add(player);
+
+player.position.set(
+    0,
+    0,
+    0
+);
+
+
+/* =====================================================
+   ENEMY
+===================================================== */
+
+const enemy =
+    createSunfish(
+        0xff9a61
+    );
+
+scene.add(enemy);
+
+enemy.position.set(
+    0,
+    0,
+    -18
+);
+
+
+/* =====================================================
+   FARM DATA
+
+===================================================== */
+
+let farmData=null;
+
+
+try{
+
+    const raw =
+        localStorage.getItem(
+            "MolaFarm_Save_V1"
+        );
+
+    if(raw){
+        farmData =
+            JSON.parse(raw);
+    }
+
+}catch(e){
+
+    console.warn(
+        "Farm save load failed",
+        e
+    );
+
+}
+
+
+/* =====================================================
+   FARM POWER
+===================================================== */
+
+function getPowerFromFarm(){
+
+    if(
+        !farmData ||
+        !Array.isArray(farmData.fishes) ||
+        farmData.fishes.length===0
+    ){
+
+        return {
+            attack:100,
+            defense:100,
+            hp:1000,
+            rank:"D"
+        };
+
+    }
+
+
+    function score(f){
+
+        return (
+            Number(f.growthGene||50)+
+            Number(f.vitalityGene||50)+
+            Number(f.breedingGene||50)
+        );
+
+    }
+
+
+    const strongest =
+        [...farmData.fishes]
+        .sort(
+            (a,b)=>
+                score(b)-score(a)
+        )[0];
+
+
+    const individualScore =
+        score(strongest);
+
+
+    let rank="D";
+
+
+    if(individualScore>=270)
+        rank="S";
+
+    else if(individualScore>=225)
+        rank="A";
+
+    else if(individualScore>=165)
+        rank="B";
+
+    else if(individualScore>=105)
+        rank="C";
+
+
+    const size =
+        Number(strongest.size||10);
+
+    const weight =
+        Number(strongest.weight||10);
+
+    const health =
+        Number(strongest.health||100);
+
+    const breed =
+        Number(strongest.breed||1);
+
+
+    const attack =
+        Math.round(
+            80+
+            size*4+
+            weight*.8+
+            breed*3+
+            individualScore*.45
+        );
+
+
+    const defense =
+        Math.round(
+            70+
+            health*.12+
+            Number(
+                strongest.vitalityGene||50
+            )*1.2
+        );
+
+
+    const hp =
+        Math.round(
+            800+
+            health*3+
+            Number(
+                strongest.vitalityGene||50
+            )*4
+        );
+
+
+    return {
+        attack,
+        defense,
+        hp,
+        rank
+    };
+
+}
+
+
+const power =
+    getPowerFromFarm();
+
+/* Farm individual size now influences the 3D model. */
+if(farmData && Array.isArray(farmData.fishes) && farmData.fishes.length){
+    const visualFish=[...farmData.fishes].sort((a,b)=>
+        (Number(b.growthGene||50)+Number(b.vitalityGene||50)+Number(b.breedingGene||50))-
+        (Number(a.growthGene||50)+Number(a.vitalityGene||50)+Number(a.breedingGene||50))
+    )[0];
+    const visualScale=THREE.MathUtils.clamp(Number(visualFish.size||10)/10,.78,1.65);
+    player.scale.setScalar(visualScale);
+}
+
+/* subtle enemy size difference */
+enemy.scale.setScalar(.92);
+
+
+const maxPlayerHP =
+    power.hp;
+
+
+let playerHP =
+    maxPlayerHP;
+
+
+let playerAttack =
+    power.attack;
+
+
+let playerDefense =
+    power.defense;
+
+
+document.getElementById(
+    "attackStat"
+).textContent =
+    playerAttack;
+
+
+document.getElementById(
+    "defenseStat"
+).textContent =
+    playerDefense;
+
+
+document.getElementById(
+    "rankStat"
+).textContent =
+    power.rank;
+
+
+/* =====================================================
+   COMBAT VARIABLES
+===================================================== */
+
+/* =====================================================
+   STEP27 ONLINE PvP
+===================================================== */
+let onlinePeer=null;
+let onlineConn=null;
+let onlineMode=false;
+let onlineRole=null;
+let onlineRoomCode="";
+let onlineConnected=false;
+let onlineReady=false;
+let onlineRemoteReady=false;
+let onlineLastSend=0;
+let onlinePingSent=0;
+let onlinePingMs=0;
+let onlineStateSeq=0;
+let onlineRemoteSeq=0;
+let onlineMatchOver=false;
+let onlineRematchReady=false;
+let onlineRemoteState={
+    x:0,y:0,z:-18,rot:0,hp:1200,alive:true,stun:0,attack:"",action:""
+};
+
+function onlineStatus(t){
+    const el=document.getElementById("onlineStatus");
+    if(el) el.textContent=t;
+}
+
+function onlineSend(data){
+    if(onlineConn && onlineConn.open) onlineConn.send(data);
+}
+
+function onlineRoomId(code){
+    return "MolaFarmPvP-"+code;
+}
+
+function resetOnlineConnection(){
+    try{ onlineConn && onlineConn.close(); }catch(e){}
+    try{ onlinePeer && onlinePeer.destroy(); }catch(e){}
+    onlineConn=null;
+    onlinePeer=null;
+    onlineConnected=false;
+    onlineReady=false;
+    onlineRemoteReady=false;
+    onlinePingSent=0; onlinePingMs=0; onlineStateSeq=0; onlineRemoteSeq=0;
+    const nh=document.getElementById("onlineNetHud"); if(nh) nh.style.display="none";
+}
+
+function setupOnlineConnection(){
+    if(!onlineConn) return;
+    onlineConn.on("open",()=>{
+        onlineConnected=true;
+        onlineStatus("🟢 相手と接続しました！両者が準備完了すると対戦開始。");
+        const sub=document.getElementById("waitingSub");
+        const phase=document.getElementById("onlinePhase");
+        if(sub) sub.textContent="相手が見つかりました。両者の「対戦開始」を待っています。";
+        if(phase) phase.textContent="対戦相手が見つかりました！";
+        onlineSend({
+            type:"hello",
+            hp:maxPlayerHP,
+            name:"Molaマンボウ"
+        });
+    });
+    onlineConn.on("data",onlineReceive);
+    onlineConn.on("close",()=>{
+        onlineConnected=false;
+        const nh=document.getElementById("onlineNetHud"); if(nh) nh.style.display="none";
+        onlineStatus("🔴 相手との接続が切れました。");
+    });
+    onlineConn.on("error",()=>{
+        const nh=document.getElementById("onlineNetHud"); if(nh) nh.classList.add("bad");
+        onlineStatus("❌ 通信エラーが発生しました。");
+    });
+}
+
+
+function showOnlineWaiting(modeText, subText){
+    const menu=document.getElementById("onlineMenu");
+    const waiting=document.getElementById("onlineWaiting");
+    const phase=document.getElementById("onlinePhase");
+    const sub=document.getElementById("waitingSub");
+    if(menu) menu.style.display="none";
+    if(waiting) waiting.style.display="block";
+    if(phase) phase.textContent=modeText||"マッチング中";
+    if(sub) sub.textContent=subText||"対戦相手を待っています…";
+}
+
+function createOnlineRoom(){
+    resetOnlineConnection();
+    onlineMode=true;
+    onlineRole="host";
+    onlineRoomCode=String(Math.floor(100000+Math.random()*900000));
+    document.getElementById("roomCode").textContent="ROOM: "+onlineRoomCode;
+    showOnlineWaiting("対戦相手を待機中","このコードを相手に伝えて参加してもらってください。");
+    onlinePeer=new Peer(onlineRoomId(onlineRoomCode),{debug:0});
+    onlinePeer.on("open",()=>{
+        onlineStatus("🟡 相手の参加待ち…");
+    });
+    onlinePeer.on("connection",conn=>{
+        if(onlineConn){ conn.close(); return; }
+        onlineConn=conn;
+        setupOnlineConnection();
+    });
+    onlinePeer.on("error",err=>{
+        onlineStatus("❌ ルーム作成エラー："+(err.type||"unknown"));
+    });
+}
+
+function joinOnlineRoom(){
+    const code=(document.getElementById("joinRoomInput").value||"").trim();
+    if(!/^\d{6}$/.test(code)){
+        onlineStatus("⚠️ 6桁のルームコードを入力してください。");
+        return;
+    }
+    resetOnlineConnection();
+    onlineMode=true;
+    onlineRole="guest";
+    onlineRoomCode=code;
+    document.getElementById("roomCode").textContent="ROOM: "+code;
+    showOnlineWaiting("ルームへ接続中","対戦ルームへの接続を開始しています…");
+    onlinePeer=new Peer({debug:0});
+    onlinePeer.on("open",()=>{
+        onlineStatus("🟡 ルームへ接続中…");
+        onlineConn=onlinePeer.connect(onlineRoomId(code),{reliable:true});
+        setupOnlineConnection();
+    });
+    onlinePeer.on("error",()=>{
+        onlineStatus("❌ 接続できません。コードを確認してください。");
+    });
+}
+
+const RANK_DATA=[{name:"🥉 BRONZE",min:0},{name:"🥈 SILVER",min:1200},{name:"🥇 GOLD",min:1500},{name:"💎 PLATINUM",min:1800},{name:"💠 DIAMOND",min:2200},{name:"👑 MASTER",min:2600}];
+let rankData=JSON.parse(localStorage.getItem("MolaFarm_Rank_V1")||"null")||{rp:1000,wins:0,losses:0,streak:0,bestStreak:0};
+function getRank(){let r=RANK_DATA[0];for(const x of RANK_DATA)if(rankData.rp>=x.min)r=x;return r;}
+function renderRank(){const r=getRank(),next=RANK_DATA.find(x=>x.min>rankData.rp);document.getElementById("rankName")?.replaceChildren(document.createTextNode(r.name));document.getElementById("rankRP")?.replaceChildren(document.createTextNode(`${rankData.rp} RP`));document.getElementById("rankRecord")?.replaceChildren(document.createTextNode(`${rankData.wins}勝 ${rankData.losses}敗`));const base=r.min,n=next?.min??(r.min+500);const pct=Math.max(0,Math.min(100,(rankData.rp-base)/(n-base)*100));const fill=document.getElementById("rankFill");if(fill)fill.style.width=pct+"%";const nt=document.getElementById("rankNext");if(nt)nt.textContent=next?`次のランクまで ${Math.max(0,next.min-rankData.rp)} RP`:`最高ランク`;}
+function applyRankResult(win){const before=rankData.rp;let delta=win?25: -18;if(!win && rankData.rp<=1000)delta=0;rankData.rp=Math.max(0,rankData.rp+delta);if(win){rankData.wins++;rankData.streak++;rankData.bestStreak=Math.max(rankData.bestStreak,rankData.streak);}else{rankData.losses++;rankData.streak=0;}localStorage.setItem("MolaFarm_Rank_V1",JSON.stringify(rankData));renderRank();const box=document.getElementById("rankResult"),d=document.getElementById("rankDelta"),st=document.getElementById("rankStats");if(box){box.style.display="block";d.textContent=(delta>=0?"+":"")+delta+" RP";st.textContent=`${before} RP → ${rankData.rp} RP　｜　連勝 ${rankData.streak}　｜　最高連勝 ${rankData.bestStreak}`;}}
+renderRank();
+
+function showPvpResult(win,reason){
+    onlineMatchOver=true;
+    applyRankResult(win);
+    try{document.exitPointerLock?.();}catch(e){}
+    const p=document.getElementById("pvpResult"), title=document.getElementById("pvpResultTitle"), body=document.getElementById("pvpResultText");
+    if(!p)return; title.textContent=win?"VICTORY":"DEFEAT"; body.textContent=reason||"対戦終了"; p.style.display="flex"; const badge=document.getElementById("onlineCombatBadge"); if(badge) badge.style.display="none";
+}
+function finishOnlineWin(){if(onlineMatchOver)return; onlineSend({type:"matchResult",result:"lose"}); showPvpResult(true,"相手マンボウをKOしました！");}
+function finishOnlineLose(){if(onlineMatchOver)return; onlineSend({type:"matchResult",result:"win"}); showPvpResult(false,"あなたのマンボウがKOされました。");}
+function requestRematch(){if(!onlineConnected){onlineStatus("🔴 相手との接続が切れています。");return;} onlineRematchReady=true; onlineSend({type:"rematch"}); onlineStatus("🟡 相手の再戦を待っています…");}
+
+function updateOnlineNetHud(){
+    const nh=document.getElementById("onlineNetHud"), tx=document.getElementById("onlineNetText");
+    if(!nh||!tx||!onlineMode||!onlineConnected) return;
+    nh.style.display="block";
+    tx.textContent=`ONLINE • ${onlinePingMs}ms`;
+    nh.classList.toggle("warn",onlinePingMs>100&&onlinePingMs<=220);
+    nh.classList.toggle("bad",onlinePingMs>220);
+}
+
+function onlineReceive(data){
+    if(!data || !data.type) return;
+    if(data.type==="ping"){ onlineSend({type:"pong",t:data.t}); return; }
+    if(data.type==="pong"){
+        if(data.t===onlinePingSent){ onlinePingMs=Math.max(0,Math.round(performance.now()-onlinePingSent)); updateOnlineNetHud(); }
+        return;
+    }
+
+    if(data.type==="hello"){
+        onlineRemoteState.hp=Number(data.hp)||1200;
+        onlineSend({type:"helloAck"});
+        document.getElementById("onlineStart").style.display="inline-block";
+        const sub=document.getElementById("waitingSub");
+        const phase=document.getElementById("onlinePhase");
+        if(sub) sub.textContent="相手との接続が完了しました。対戦開始を押してください。";
+        if(phase) phase.textContent="対戦準備完了";
+        return;
+    }
+
+    if(data.type==="helloAck"){
+        document.getElementById("onlineStart").style.display="inline-block";
+        const sub=document.getElementById("waitingSub");
+        const phase=document.getElementById("onlinePhase");
+        if(sub) sub.textContent="相手との接続が完了しました。対戦開始を押してください。";
+        if(phase) phase.textContent="対戦準備完了";
+        return;
+    }
+
+    if(data.type==="start"){
+        onlineRemoteReady=true;
+        if(onlineReady && onlineRemoteReady){
+            if(onlineRole==="host") onlineSend({type:"countdown"});
+            beginOnlineBattle();
+        }
+        return;
+    }
+
+    if(data.type==="countdown"){
+        if(onlineMode && onlineConnected) runOnlineCountdown();
+        return;
+    }
+
+    if(data.type==="state"){
+        const seq=Number(data.seq)||0; if(seq && seq<onlineRemoteSeq) return; onlineRemoteSeq=seq;
+        onlineRemoteState.x=Number(data.x)||0;
+        onlineRemoteState.y=Number(data.y)||0;
+        onlineRemoteState.z=Number(data.z)||0;
+        onlineRemoteState.rot=Number(data.rot)||0;
+        onlineRemoteState.hp=Number(data.hp)||0;
+        onlineRemoteState.alive=data.alive!==false;
+        onlineRemoteState.stun=Number(data.stun)||0;
+        onlineRemoteState.attack=data.attack||"";
+        onlineRemoteState.action=data.action||data.attack||"";
+        return;
+    }
+
+    if(data.type==="hit"){
+        if(!onlineMode) return;
+        const dmg=Math.max(1,Math.floor(Number(data.damage)||1));
+        if(damageInvuln>0) return;
+        enemyHP=Math.max(0,enemyHP-dmg);
+        enemyStun=Math.max(enemyStun,Number(data.stun)||0);
+        damageInvuln=.08;
+        attackHitFlash=.12;
+        showDamage(dmg,enemy.position);
+        createHitEffect(enemy.position,Number(data.effect)||2);
+        showOnlineCombatEvent("HIT  -"+dmg);
+        const kb=Number(data.knockback)||0;
+        if(kb>0){
+            const away=enemy.position.clone().sub(player.position);
+            away.y=0;
+            if(away.lengthSq()>.001){
+                away.normalize();
+                enemy.userData.knockback=away.multiplyScalar(Math.min(kb*1.35,12));
+                if(Number(data.effect)===4) enemy.userData.knockback.y=2.5;
+            }
+        }
+        hitStop=Math.max(hitStop,Number(data.hitStop)||.065);
+        cameraShake=Math.max(cameraShake,Number(data.shake)||.18);
+        updateEnemyHUD();
+        if(enemyHP<=0){ enemyHP=0; enemyAlive=false; enemy.visible=false; if(onlineMode) finishOnlineWin(); else killEnemy(); }
+        return;
+    }
+
+    if(data.type==="matchResult"){ if(data.result==="lose") finishOnlineWin(); else finishOnlineLose(); return; }
+    if(data.type==="rematch"){ onlineSend({type:"rematchAck"}); if(onlineRematchReady){ location.reload(); } else onlineStatus("🔵 相手が再戦を希望しています。"); return; }
+    if(data.type==="rematchAck"){ if(onlineRematchReady) location.reload(); return; }
+
+    if(data.type==="remoteDeath"){
+        playerHP=0;
+        updatePlayerHUD();
+        if(!onlineMatchOver) showPvpResult(true,"相手マンボウがKOされました！");
+        playerDeath();
+        return;
+    }
+}
+
+let onlineBattleLive=false;
+let onlineCountdownActive=false;
+let onlineCountdownTimer=null;
+
+function runOnlineCountdown(){
+    if(onlineCountdownActive || !onlineMode || !onlineConnected) return;
+    onlineCountdownActive=true;
+    onlineBattleLive=false;
+    document.getElementById("onlinePanel").style.display="none";
+    document.getElementById("start").style.display="none";
+    const combatBadge=document.getElementById("onlineCombatBadge"); if(combatBadge) combatBadge.style.display="block";
+    const overlay=document.getElementById("pvpCountdown");
+    const num=document.getElementById("countNum");
+    overlay.style.display="flex";
+    const steps=["3","2","1","FIGHT!"];
+    let i=0;
+    const tick=()=>{
+        if(i>=steps.length){
+            overlay.style.display="none";
+            onlineCountdownActive=false;
+            onlineBattleLive=true;
+            document.body.requestPointerLock?.();
+            updateOnlineNetHud();
+            onlineStatus("⚔️ ONLINE BATTLE START!");
+            return;
+        }
+        num.className=i===3?"fightText":"countNum";
+        num.textContent=steps[i++];
+        if(i<=3){num.classList.remove("pop");void num.offsetWidth;num.classList.add("pop");}
+        onlineCountdownTimer=setTimeout(tick,1000);
+    };
+    tick();
+}
+
+function beginOnlineBattle(){
+    if(!onlineMode || !onlineConnected) return;
+    document.getElementById("onlinePanel").style.display="none";
+    document.getElementById("start").style.display="none";
+    document.getElementById("start").style.pointerEvents="none";
+    enemyHP=onlineRemoteState.hp>0?onlineRemoteState.hp:1200;
+    enemyAlive=true;
+    enemy.visible=true;
+    enemy.position.set(0,0,-18);
+    onlineRemoteActionLast="";
+    playerHP=maxPlayerHP;
+    updatePlayerHUD();
+    updateEnemyHUD();
+    updateOnlineNetHud();
+    runOnlineCountdown();
+}
+
+function startOnlineBattle(){
+    if(!onlineConnected){
+        onlineStatus("⚠️ 先に相手と接続してください。");
+        return;
+    }
+    onlineReady=true;
+    onlineSend({type:"start"});
+    if(onlineRemoteReady){
+        if(onlineRole==="host") onlineSend({type:"countdown"});
+        beginOnlineBattle();
+    }else onlineStatus("🟡 相手の開始待ち…");
+}
+
+let enemyHP=1200;
+
+const enemyMaxHP=1200;
+
+let enemyAlive=true;
+
+let enemyStun=0;
+
+let playerStun=0;
+
+let hitStop=0;
+
+let cameraShake=0;
+
+let dashTimer=0;
+
+let dashCooldown=0;
+
+let flashCooldown=0;
+
+let attackLock=0;
+
+let comboIndex=0;
+
+let comboTimer=0;
+
+let lastAttackTime=0;
+
+let isAttacking=false;
+
+let currentAttack=null;
+
+let attackPhase="none";
+
+let attackElapsed=0;
+
+let attackHasHit=false;
+
+let playerInvincible=0;
+let m1Buffered=false;
+let m1BufferTime=0;
+let dashAttackActive=false;
+let airAttackActive=false;
+let finisherShake=0;
+let skillBuffer="";
+let skillBufferTime=0;
+let lockOnEnabled=true;
+let comboBoostTimer=0;
+let pvpHitstop=.0;
+let pvpInvuln=0;
+let dashAttackWindow=0;
+let comboLinkWindow=0;
+let damageInvuln=0;
+let attackHitFlash=0;
+let lastRemoteHp=1200;
+let counterHitWindow=0;
+let lastRemoteAction="";
+let dangerShown=false;
+
+
+/* =====================================================
+   LOCK ON
+===================================================== */
+
+let lockOn=false;
+
+let lockTarget=enemy;
+
+let lockDistance=30;
+
+
+/* =====================================================
+   M1 DATA
+===================================================== */
+
+const attacks=[
+
+    {
+        name:"JAB",
+        damage:1,
+        knockback:2.5,
+        forward:1.4,
+        startup:.055,
+        active:.11,
+        recovery:.18,
+        stun:.18,
+        hitRadius:3.4
+    },
+
+    {
+        name:"CROSS",
+        damage:1.18,
+        knockback:3.8,
+        forward:1.7,
+        startup:.05,
+        active:.12,
+        recovery:.21,
+        stun:.23,
+        hitRadius:3.7
+    },
+
+    {
+        name:"HOOK",
+        damage:1.35,
+        knockback:5.2,
+        forward:1.8,
+        startup:.065,
+        active:.13,
+        recovery:.25,
+        stun:.3,
+        hitRadius:4.4
+    },
+
+    {
+        name:"FINISH",
+        damage:1.85,
+        knockback:11,
+        forward:2.8,
+        startup:.09,
+        active:.16,
+        recovery:.4,
+        stun:.6,
+        hitRadius:4.8
+    }
+
+];
+
+
+/* =====================================================
+   DASH ATTACK
+===================================================== */
+
+const dashAttack={
+
+    name:"DASH ATTACK",
+
+    damage:1.55,
+
+    knockback:8,
+
+    stun:.4,
+
+    hitRadius:4.5
+
+};
+
+
+/* =====================================================
+   AIR ATTACK
+===================================================== */
+
+const airAttack={
+
+    name:"AIR ATTACK",
+
+    damage:1.4,
+
+    knockback:6,
+
+    stun:.35,
+
+    hitRadius:4.3
+
+};
+
+
+/* =====================================================
+   SKILLS
+===================================================== */
+
+const skills={
+
+    Z:{
+        name:"水弾",
+        cooldown:2.5,
+        damage:1.45,
+        stun:.35
+    },
+
+    X:{
+        name:"突進",
+        cooldown:4,
+        damage:1.9,
+        stun:.55
+    },
+
+    C:{
+        name:"回転",
+        cooldown:5,
+        damage:1.25,
+        stun:.3
+    },
+
+    F:{
+        name:"高速突撃",
+        cooldown:7,
+        damage:2.25,
+        stun:.7
+    }
+
+};
+
+
+const skillCooldowns={
+    Z:0,
+    X:0,
+    C:0,
+    F:0
+};
+
+
+let activeSkill=null;
+
+let skillTimer=0;
+
+let skillHit=false;
+
+
+/* =====================================================
+   INPUT
+===================================================== */
+
+const keys={};
+
+
+window.addEventListener(
+    "keydown",
+    e=>{
+
+        keys[e.code]=true;
+
+
+        if(e.code==="Tab"){
+
+            e.preventDefault();
+
+            document
+                .getElementById("controls")
+                .classList.toggle("hidden");
+
+        }
+
+
+        if(
+            !e.repeat &&
+            mouseLocked
+        ){
+
+            if(e.code==="KeyZ")
+                startSkill("Z");
+
+            if(e.code==="KeyX")
+                startSkill("X");
+
+            if(e.code==="KeyC")
+                startSkill("C");
+
+            if(e.code==="KeyF")
+                startSkill("F");
+
+
+            if(e.code==="KeyT")
+                toggleLockOn();
+
+        }
+
+    }
+);
+
+
+window.addEventListener(
+    "keyup",
+    e=>{
+        keys[e.code]=false;
+    }
+);
+
+
+/* =====================================================
+   MOUSE CAMERA
+===================================================== */
+
+let mouseLocked=false;
+
+let cameraYaw=0;
+
+let cameraPitch=.12;
+
+const cameraDistance=12;
+
+
+document.addEventListener(
+    "click",
+    ()=>{
+
+        if(!mouseLocked){
+
+            document.body.requestPointerLock();
+
+        }
+
+    }
+);
+
+
+document.addEventListener(
+    "pointerlockchange",
+    ()=>{
+
+        mouseLocked =
+            document.pointerLockElement ===
+            document.body;
+
+    }
+);
+
+
+document.addEventListener(
+    "mousemove",
+    e=>{
+
+        if(!mouseLocked)
+            return;
+
+
+        if(lockOn){
+
+            cameraYaw -=
+                e.movementX*.0016;
+
+            cameraPitch +=
+                e.movementY*.0013;
+
+        }else{
+
+            cameraYaw -=
+                e.movementX*.0025;
+
+            cameraPitch +=
+                e.movementY*.0018;
+
+        }
+
+
+        cameraPitch =
+            THREE.MathUtils.clamp(
+                cameraPitch,
+                -.7,
+                .75
+            );
+
+    }
+);
+
+
+/* =====================================================
+   LOCK ON
+===================================================== */
+
+function toggleLockOn(){
+
+    if(!enemyAlive){
+
+        lockOn=false;
+
+        updateLockUI();
+
+        return;
+
+    }
+
+
+    lockOn=!lockOn;
+
+
+    if(lockOn){
+
+        lockTarget=enemy;
+
+    }
+
+
+    updateLockUI();
+
+}
+
+
+function updateLockUI(){
+
+    const text =
+        document.getElementById(
+            "lockText"
+        );
+
+
+    if(lockOn){
+
+        text.textContent =
+            "🎯 LOCK ON : T";
+
+        text.classList.add("show");
+
+    }else{
+
+        text.classList.remove("show");
+
+    }
+
+}
+
+
+/* =====================================================
+   FACE TARGET
+===================================================== */
+
+function faceEnemy(){
+
+    if(!lockOn || !enemyAlive)
+        return;
+
+
+    const direction =
+        enemy.position.clone()
+        .sub(player.position);
+
+
+    direction.y=0;
+
+
+    if(direction.lengthSq()<.001)
+        return;
+
+
+    direction.normalize();
+
+
+    const angle =
+        Math.atan2(
+            direction.x,
+            direction.z
+        );
+
+
+    player.rotation.y =
+        THREE.MathUtils.lerp(
+            player.rotation.y,
+            angle,
+            .18
+        );
+
+}
+
+
+/* =====================================================
+   M1
+===================================================== */
+
+window.addEventListener(
+    "mousedown",
+    e=>{
+
+        if(e.button!==0)
+            return;
+
+        if(!mouseLocked)
+            return;
+
+        startM1();
+
+    }
+);
+
+
+function startM1(){
+    if(lockOn && enemyAlive){
+        const toTarget=enemy.position.clone().sub(player.position);
+        toTarget.y=0;
+        if(toTarget.lengthSq()>.001){
+            const ang=Math.atan2(toTarget.x,toTarget.z);
+            player.rotation.y=THREE.MathUtils.lerp(player.rotation.y,ang,.65);
+        }
+    }
+
+    if(playerStun>0 || activeSkill)
+        return;
+
+    const now=performance.now();
+
+    if(attackLock>0){
+        if(isAttacking){
+            m1Buffered=true;
+            m1BufferTime=.24;
+        }
+        return;
+    }
+
+    if(dashTimer>0 && !isAttacking){
+        dashAttackActive=true;
+        startDashAttack();
+        return;
+    }
+
+    if(player.position.y>3 && !isAttacking){
+        airAttackActive=true;
+        startAirAttack();
+        return;
+    }
+
+    if(now-lastAttackTime>900)
+        comboIndex=0;
+
+    if(comboIndex>=4)
+        comboIndex=0;
+
+    currentAttack=attacks[comboIndex];
+    attackPhase="startup";
+    attackElapsed=0;
+    attackHasHit=false;
+    isAttacking=true;
+
+    attackLock=currentAttack.startup+
+               currentAttack.active+
+               currentAttack.recovery;
+
+    comboIndex++;
+    comboTimer=.9;
+    lastAttackTime=now;
+    m1Buffered=false;
+    m1BufferTime=0;
+
+    showCombo(comboIndex);
+}
+
+/* =====================================================
+   DASH ATTACK START
+===================================================== */
+
+function startDashAttack(){
+
+    if(playerStun>0)
+        return;
+
+
+    isAttacking=true;
+
+    attackPhase="active";
+
+    attackElapsed=0;
+
+    attackHasHit=false;
+
+    currentAttack=dashAttack;
+
+    attackLock=.32;
+
+    comboIndex=0;
+
+    comboTimer=0;
+
+    showSpecialCombo(
+        "⚡ DASH ATTACK"
+    );
+
+}
+
+
+/* =====================================================
+   AIR ATTACK START
+===================================================== */
+
+function startAirAttack(){
+
+    if(playerStun>0)
+        return;
+
+
+    isAttacking=true;
+
+    attackPhase="active";
+
+    attackElapsed=0;
+
+    attackHasHit=false;
+
+    currentAttack=airAttack;
+
+    attackLock=.4;
+
+    comboIndex=0;
+
+    comboTimer=0;
+
+    showSpecialCombo(
+        "⬆ AIR ATTACK"
+    );
+
+}
+
+
+/* =====================================================
+   COMBO UI
+===================================================== */
+
+function showCombo(n){
+
+    const el =
+        document.getElementById(
+            "combo"
+        );
+
+
+    const names=[
+
+        "",
+
+        "M1 × 1  JAB",
+
+        "M1 × 2  CROSS",
+
+        "M1 × 3  HOOK",
+
+        "M1 × 4  FINISH"
+
+    ];
+
+
+    el.textContent =
+        names[n];
+
+
+    el.classList.add("show");
+
+
+    clearTimeout(
+        showCombo.timer
+    );
+
+
+    showCombo.timer =
+        setTimeout(
+            ()=>{
+
+                el.classList.remove(
+                    "show"
+                );
+
+            },
+            700
+        );
+
+
+    document.getElementById(
+        "comboStat"
+    ).textContent=n;
+
+}
+
+
+function showSpecialCombo(text){
+
+    const el =
+        document.getElementById(
+            "combo"
+        );
+
+
+    el.textContent=text;
+
+    el.classList.add("show");
+
+
+    clearTimeout(
+        showCombo.timer
+    );
+
+
+    showCombo.timer =
+        setTimeout(
+            ()=>{
+
+                el.classList.remove(
+                    "show"
+                );
+
+            },
+            650
+        );
+
+}
+
+
+/* =====================================================
+   M1 HITBOX
+===================================================== */
+
+function performAttackHit(){
+
+    if(!enemyAlive)
+        return;
+
+
+    if(attackHasHit)
+        return;
+
+
+    const attack =
+        currentAttack;
+
+
+    /*
+       ダッシュ・空中攻撃・通常攻撃で
+       判定を少し変える
+    */
+
+    const toEnemy =
+        enemy.position.clone()
+        .sub(player.position);
+
+
+    const distance =
+        toEnemy.length();
+
+
+    if(
+        distance >
+        attack.hitRadius
+    ){
+
+        return;
+
+    }
+
+
+    const direction =
+        getForwardDirection();
+
+
+    const normalized =
+        toEnemy.clone()
+        .normalize();
+
+    // ロックオン中は照準を相手方向へ少し補正
+    if(lockOn && lockTarget===enemy && toEnemy.length()<lockDistance){
+        direction.lerp(normalized,.22).normalize();
+    }
+
+
+    const dot =
+        direction.dot(
+            normalized
+        );
+
+
+    /*
+       フィニッシュは横にも広い
+    */
+
+    const requiredDot =
+        attack.name==="FINISH"
+        ? -.15
+        : attack.name==="HOOK"
+        ? -.05
+        : .05;
+
+
+    if(dot<requiredDot)
+        return;
+
+
+    attackHasHit=true;
+
+    const marker=document.getElementById("hitMarker");
+    if(marker){
+        marker.classList.remove("show");
+        void marker.offsetWidth;
+        marker.classList.add("show");
+    }
+
+    if(currentAttack && currentAttack.name==="FINISH"){
+        pvpHitstop=.16;
+        finisherShake=.55;
+        hitStop=Math.max(hitStop,.13);
+        createHitEffect(
+            enemy.position.clone(),
+            0xffe6a3,
+            30
+        );
+    }else{
+        hitStop=Math.max(hitStop,.055);
+    }
+
+    comboBoostTimer=.22;
+    comboLinkWindow=.42;
+    attackHitFlash=.12;
+    const lunge=getForwardDirection();
+    player.position.add(lunge.multiplyScalar(attack.forward*.18));
+    let damage =
+        Math.round(
+            playerAttack*
+            attack.damage
+        );
+
+    // 相手の攻撃中に差し込めたらカウンターヒット
+    const counterEligible = onlineMode && onlineConnected && counterHitWindow>0 && !!(onlineRemoteState.attack||"");
+    if(counterEligible){
+        damage=Math.round(damage*1.35);
+        const cf=document.getElementById("counterFlash");
+        if(cf){
+            cf.textContent="COUNTER HIT!";
+            cf.classList.remove("show"); void cf.offsetWidth; cf.classList.add("show");
+        }
+        showPvpEvent("⚡ COUNTER HIT");
+        cameraShake=Math.max(cameraShake,.28);
+        hitStop=Math.max(hitStop,.09);
+    }
+
+
+    damageEnemy(
+        damage,
+        attack.knockback,
+        attack.stun,
+        player.position,
+        attack.name==="FINISH"
+        ?4
+        :3
+    );
+
+}
+
+
+/* =====================================================
+   ENEMY DAMAGE
+===================================================== */
+
+function damageEnemy(
+    damage,
+    knockback,
+    stun,
+    origin,
+    effectIndex=1
+){
+
+    if(!enemyAlive)
+        return;
+
+    if(onlineMode && onlineConnected){
+        onlineSend({type:"hit",damage:Math.max(1,Math.floor(damage)),stun:Number(stun)||0,effect:effectIndex,knockback:Number(knockback)||0,hitStop:effectIndex===4?.11:.065,shake:effectIndex===4?.40:.18});
+    }
+
+    enemyHP =
+        Math.max(
+            0,
+            enemyHP-damage
+        );
+
+
+    enemyStun =
+        Math.max(
+            enemyStun,
+            stun
+        );
+
+
+    showDamage(
+        damage,
+        enemy.position
+    );
+
+
+    const direction =
+        enemy.position.clone()
+        .sub(origin);
+
+
+    if(direction.lengthSq()<.001){
+
+        direction.set(
+            0,
+            0,
+            -1
+        );
+
+    }
+
+
+    direction.normalize();
+
+
+    enemy.userData.knockback =
+        direction.multiplyScalar(
+            knockback
+        );
+
+
+    /*
+       上方向ノックバック
+       フィニッシュのみ少し浮かせる
+    */
+
+    if(
+        effectIndex===4
+    ){
+
+        enemy.userData.knockback.y=
+            2.5;
+
+    }
+
+
+    hitStop =
+        effectIndex===4
+        ? .11
+        : .065;
+
+
+    cameraShake =
+        effectIndex===4
+        ? .4
+        : .18;
+
+
+    createHitEffect(
+        enemy.position,
+        effectIndex
+    );
+
+
+    updateEnemyHUD();
+
+
+    if(enemyHP<=0){
+        if(onlineMode) finishOnlineWin();
+        else killEnemy();
+    }
+
+}
+
+
+/* =====================================================
+   SKILL START
+===================================================== */
+
+function startSkill(key){
+
+    if(playerStun>0)
+        return;
+
+
+    if(isAttacking){
+        if(comboLinkWindow>0){
+            skillBuffer=key==="Z"?"KeyZ":key==="X"?"KeyX":key==="C"?"KeyC":"KeyF";
+            skillBufferTime=.55;
+        }
+        return;
+    }
+
+
+    if(activeSkill)
+        return;
+
+
+    if(skillCooldowns[key]>0)
+        return;
+
+
+    if(!enemyAlive)
+        return;
+
+
+    activeSkill=key;
+
+    skillTimer=0;
+
+    skillHit=false;
+
+
+    skillCooldowns[key] =
+        skills[key].cooldown;
+
+
+    createSkillStartEffect(
+        key
+    );
+
+}
+
+
+/* =====================================================
+   SKILL UPDATE
+===================================================== */
+
+function updateSkills(dt){
+
+    if(!activeSkill)
+        return;
+
+
+    skillTimer+=dt;
+
+
+    const key =
+        activeSkill;
+
+
+    /* ============================
+       Z
+    ============================ */
+
+    if(key==="Z"){
+
+        if(
+            skillTimer>=.12 &&
+            !skillHit
+        ){
+
+            skillHit=true;
+
+            createWaterProjectile();
+
+        }
+
+
+        if(skillTimer>=.55){
+
+            activeSkill=null;
+
+        }
+
+    }
+
+
+    /* ============================
+       X
+    ============================ */
+
+    else if(key==="X"){
+
+        if(skillTimer<.32){
+
+            const dir =
+                getForwardDirection();
+
+
+            player.position.add(
+                dir.multiplyScalar(
+                    25*dt
+                )
+            );
+
+        }
+
+
+        if(
+            skillTimer>=.10 &&
+            !skillHit
+        ){
+
+            if(
+                player.position.distanceTo(
+                    enemy.position
+                )<7
+            ){
+
+                skillHit=true;
+
+
+                damageEnemy(
+                    Math.round(
+                        playerAttack*
+                        skills.X.damage
+                    ),
+                    8,
+                    skills.X.stun,
+                    player.position,
+                    4
+                );
+
+            }
+
+        }
+
+
+        if(skillTimer>=.38){
+
+            activeSkill=null;
+
+        }
+
+    }
+
+
+    /* ============================
+       C
+    ============================ */
+
+    else if(key==="C"){
+
+        player.rotation.y +=
+            dt*18;
+
+
+        if(
+            skillTimer>=.08 &&
+            skillTimer<=.28 &&
+            !skillHit
+        ){
+
+            if(
+                player.position.distanceTo(
+                    enemy.position
+                )<9
+            ){
+
+                skillHit=true;
+
+
+                damageEnemy(
+                    Math.round(
+                        playerAttack*
+                        skills.C.damage
+                    ),
+                    6,
+                    skills.C.stun,
+                    player.position,
+                    3
+                );
+
+            }
+
+        }
+
+
+        if(skillTimer>=.45){
+
+            activeSkill=null;
+
+        }
+
+    }
+
+
+    /* ============================
+       F
+    ============================ */
+
+    else if(key==="F"){
+
+        if(skillTimer<.42){
+
+            const dir =
+                getForwardDirection();
+
+
+            player.position.add(
+                dir.multiplyScalar(
+                    36*dt
+                )
+            );
+
+        }
+
+
+        if(
+            skillTimer>=.08 &&
+            !skillHit
+        ){
+
+            if(
+                player.position.distanceTo(
+                    enemy.position
+                )<7.5
+            ){
+
+                skillHit=true;
+
+
+                damageEnemy(
+                    Math.round(
+                        playerAttack*
+                        skills.F.damage
+                    ),
+                    12,
+                    skills.F.stun,
+                    player.position,
+                    4
+                );
+
+            }
+
+        }
+
+
+        if(skillTimer>=.48){
+
+            activeSkill=null;
+
+        }
+
+    }
+
+}
+
+
+/* =====================================================
+   WATER PROJECTILE
+===================================================== */
+
+const skillProjectiles=[];
+
+
+function createWaterProjectile(){
+
+    const projectile =
+        new THREE.Mesh(
+            new THREE.SphereGeometry(
+                .45,
+                16,
+                16
+            ),
+            new THREE.MeshBasicMaterial({
+                color:0x6ee7ff
+            })
+        );
+
+
+    const direction =
+        getForwardDirection();
+
+
+    projectile.position =
+        player.position.clone()
+        .add(
+            direction.clone()
+            .multiplyScalar(2)
+        );
+
+
+    projectile.userData.direction =
+        direction;
+
+
+    projectile.userData.life=1.2;
+
+    projectile.userData.speed=36;
+
+    projectile.userData.hit=false;
+
+
+    scene.add(projectile);
+
+    skillProjectiles.push(
+        projectile
+    );
+
+
+    createDashEffectAt(
+        projectile.position,
+        8
+    );
+
+}
+
+
+/* =====================================================
+   PROJECTILES
+===================================================== */
+
+function updateSkillProjectiles(dt){
+
+    for(
+        let i=skillProjectiles.length-1;
+        i>=0;
+        i--
+    ){
+
+        const p =
+            skillProjectiles[i];
+
+
+        p.userData.life-=dt;
+
+
+        p.position.add(
+            p.userData.direction
+            .clone()
+            .multiplyScalar(
+                p.userData.speed*dt
+            )
+        );
+
+
+        p.scale.multiplyScalar(
+            1+dt*2
+        );
+
+
+        if(
+            enemyAlive &&
+            !p.userData.hit &&
+            p.position.distanceTo(
+                enemy.position
+            )<3.2
+        ){
+
+            p.userData.hit=true;
+
+
+            damageEnemy(
+                Math.round(
+                    playerAttack*
+                    skills.Z.damage
+                ),
+                4.5,
+                skills.Z.stun,
+                player.position,
+                3
+            );
+
+
+            createExplosion(
+                p.position,
+                14
+            );
+
+
+            p.userData.life=0;
+
+        }
+
+
+        if(
+            p.userData.life<=0
+        ){
+
+            scene.remove(p);
+
+            p.geometry.dispose();
+
+            p.material.dispose();
+
+            skillProjectiles.splice(
+                i,
+                1
+            );
+
+        }
+
+    }
+
+}
+
+
+/* =====================================================
+   FORWARD
+===================================================== */
+
+function getForwardDirection(){
+
+    /*
+       ロックオン中は敵方向を優先
+    */
+
+    if(
+        lockOn &&
+        enemyAlive
+    ){
+
+        const dir =
+            enemy.position.clone()
+            .sub(player.position);
+
+        if(dir.lengthSq()>.001){
+
+            return dir.normalize();
+
+        }
+
+    }
+
+
+    return new THREE.Vector3(
+        0,
+        0,
+        -1
+    )
+    .applyQuaternion(
+        player.quaternion
+    )
+    .normalize();
+
+}
+
+
+/* =====================================================
+   SKILL EFFECT
+===================================================== */
+
+function createSkillStartEffect(key){
+
+    const count =
+        key==="C"
+        ?26
+        :16;
+
+
+    for(let i=0;i<count;i++){
+
+        const p =
+            new THREE.Mesh(
+                new THREE.SphereGeometry(
+                    .08+
+                    Math.random()*.12,
+                    6,
+                    6
+                ),
+                new THREE.MeshBasicMaterial({
+                    color:
+                        key==="Z"
+                        ?0x5ee7ff
+                        :
+                        key==="X"
+                        ?0xffd45c
+                        :
+                        key==="C"
+                        ?0xb36cff
+                        :0xffffff,
+                    transparent:true,
+                    opacity:.85
+                })
+            );
+
+
+        p.position.copy(
+            player.position
+        );
+
+
+        p.userData.life =
+            .3+
+            Math.random()*.3;
+
+
+        p.userData.velocity =
+            new THREE.Vector3(
+                (Math.random()-.5)*7,
+                (Math.random()-.5)*7,
+                (Math.random()-.5)*7
+            );
+
+
+        scene.add(p);
+
+        hitParticles.push(p);
+
+    }
+
+}
+
+
+/* =====================================================
+   EXPLOSION
+===================================================== */
+
+function createExplosion(
+    pos,
+    count=12
+){
+
+    for(let i=0;i<count;i++){
+
+        const p =
+            new THREE.Mesh(
+                new THREE.SphereGeometry(
+                    .1,
+                    6,
+                    6
+                ),
+                new THREE.MeshBasicMaterial({
+                    color:0x6ee7ff,
+                    transparent:true,
+                    opacity:.9
+                })
+            );
+
+
+        p.position.copy(pos);
+
+
+        p.userData.life=.35;
+
+
+        p.userData.velocity =
+            new THREE.Vector3(
+                (Math.random()-.5)*12,
+                (Math.random()-.5)*12,
+                (Math.random()-.5)*12
+            );
+
+
+        scene.add(p);
+
+        hitParticles.push(p);
+
+    }
+
+}
+
+
+/* =====================================================
+   HIT EFFECT
+===================================================== */
+
+function createHitEffect(
+    pos,
+    index
+){
+
+    const count =
+        index===4
+        ?30
+        :index===3
+        ?20
+        :12;
+
+
+    for(let i=0;i<count;i++){
+
+        const p =
+            new THREE.Mesh(
+                new THREE.SphereGeometry(
+                    index===4
+                    ? .14
+                    : .08,
+                    6,
+                    6
+                ),
+                new THREE.MeshBasicMaterial({
+                    color:
+                        index===4
+                        ?0xffe06b
+                        :0xbcefff,
+                    transparent:true,
+                    opacity:.9
+                })
+            );
+
+
+        p.position.copy(pos);
+
+
+        p.userData.velocity =
+            new THREE.Vector3(
+                (Math.random()-.5)*9,
+                (Math.random()-.5)*9,
+                (Math.random()-.5)*9
+            );
+
+
+        p.userData.life =
+            .35+
+            Math.random()*.3;
+
+
+        scene.add(p);
+
+        hitParticles.push(p);
+
+    }
+
+}
+
+
+/* =====================================================
+   DASH
+===================================================== */
+
+function startDash(){
+
+    if(dashCooldown>0)
+        return;
+
+
+    if(playerStun>0)
+        return;
+
+
+    dashTimer=.2;
+
+    dashCooldown=.8;
+
+
+    playerInvincible =
+        Math.max(
+            playerInvincible,
+            .2
+        );
+
+
+    createDashEffect();
+
+}
+
+
+/* =====================================================
+   FLASH STEP
+===================================================== */
+
+function flashStep(){
+
+    if(flashCooldown>0)
+        return;
+
+
+    if(playerStun>0)
+        return;
+
+
+    const direction =
+        getForwardDirection();
+
+
+    player.position.add(
+        direction.multiplyScalar(9)
+    );
+
+
+    flashCooldown=2;
+
+
+    playerInvincible =
+        Math.max(
+            playerInvincible,
+            .25
+        );
+
+
+    createDashEffect();
+
+}
+
+
+/* =====================================================
+   SPECIAL INPUT
+===================================================== */
+
+let previousQ=false;
+let previousT=false;
+
+let previousR=false;
+
+
+function handleSpecialInput(){
+
+    const q = keys["KeyQ"];
+
+
+    if(
+        q &&
+        !previousQ
+    ){
+
+        startDash();
+
+    }
+
+
+    previousQ=q;
+    previousT=!!keys["KeyT"];
+
+
+    if(
+        keys["KeyR"] &&
+        !previousR
+    ){
+
+        flashStep();
+
+    }
+
+
+    previousR =
+        !!keys["KeyR"];
+
+}
+
+
+/* =====================================================
+   DASH EFFECT
+===================================================== */
+
+function createDashEffect(){
+
+    createDashEffectAt(
+        player.position,
+        12
+    );
+
+}
+
+
+function createDashEffectAt(
+    position,
+    count
+){
+
+    for(let i=0;i<count;i++){
+
+        const p =
+            new THREE.Mesh(
+                new THREE.SphereGeometry(
+                    .08+
+                    Math.random()*.1,
+                    6,
+                    6
+                ),
+                new THREE.MeshBasicMaterial({
+                    color:0x7de8ff,
+                    transparent:true,
+                    opacity:.7
+                })
+            );
+
+
+        p.position.copy(position);
+
+
+        p.userData.life=.4;
+
+
+        p.userData.velocity =
+            new THREE.Vector3(
+                (Math.random()-.5)*3,
+                (Math.random()-.5)*3,
+                (Math.random()-.5)*3
+            );
+
+
+        scene.add(p);
+
+        hitParticles.push(p);
+
+    }
+
+}
+
+
+/* =====================================================
+   PLAYER MOVEMENT
+===================================================== */
+
+function updatePlayer(dt){
+
+    if(playerStun>0){
+
+        playerStun-=dt;
+
+        return;
+
+    }
+
+
+    const move =
+        new THREE.Vector3();
+
+
+    if(keys["KeyW"])
+        move.z-=1;
+
+    if(keys["KeyS"])
+        move.z+=1;
+
+    if(keys["KeyA"])
+        move.x-=1;
+
+    if(keys["KeyD"])
+        move.x+=1;
+
+
+    if(move.length()>0){
+
+        move.normalize();
+
+
+        const cameraForward =
+            new THREE.Vector3(
+                0,
+                0,
+                -1
+            )
+            .applyAxisAngle(
+                new THREE.Vector3(0,1,0),
+                cameraYaw
+            );
+
+
+        const cameraRight =
+            new THREE.Vector3(
+                1,
+                0,
+                0
+            )
+            .applyAxisAngle(
+                new THREE.Vector3(0,1,0),
+                cameraYaw
+            );
+
+
+        const finalMove =
+            new THREE.Vector3();
+
+
+        finalMove.addScaledVector(
+            cameraForward,
+            -move.z
+        );
+
+
+        finalMove.addScaledVector(
+            cameraRight,
+            move.x
+        );
+
+
+        finalMove.normalize();
+
+
+        let speed=7;
+
+
+        if(isAttacking)
+            speed=3.4;
+
+
+        if(activeSkill)
+            speed=2;
+
+
+        if(dashTimer>0){
+
+            speed=32;
+
+            dashTimer-=dt;
+
+        }
+
+
+        player.position.add(
+            finalMove.multiplyScalar(
+                speed*dt
+            )
+        );
+
+
+        /*
+           ロックオンしていない時だけ
+           移動方向を見る
+        */
+
+        if(!lockOn){
+
+            const targetAngle =
+                Math.atan2(
+                    finalMove.x,
+                    finalMove.z
+                );
+
+
+            player.rotation.y =
+                THREE.MathUtils.lerp(
+                    player.rotation.y,
+                    targetAngle,
+                    Math.min(
+                        1,
+                        dt*12
+                    )
+                );
+
+        }
+
+    }
+
+
+    if(keys["Space"])
+        player.position.y+=5*dt;
+
+
+    if(
+        keys["ControlLeft"] ||
+        keys["ControlRight"]
+    ){
+
+        player.position.y-=5*dt;
+
+    }
+
+
+    player.position.x =
+        THREE.MathUtils.clamp(
+            player.position.x,
+            -45,
+            45
+        );
+
+
+    player.position.z =
+        THREE.MathUtils.clamp(
+            player.position.z,
+            -45,
+            45
+        );
+
+
+    player.position.y =
+        THREE.MathUtils.clamp(
+            player.position.y,
+            -5,
+            18
+        );
+
+
+    /*
+       ロックオン中は敵方向を向く
+    */
+
+    faceEnemy();
+
+}
+
+
+/* =====================================================
+   M1 UPDATE
+===================================================== */
+
+function updateAttack(dt){
+
+    if(attackLock>0)
+        attackLock-=dt;
+
+    if(m1BufferTime>0){
+        m1BufferTime-=dt;
+    }else{
+        m1Buffered=false;
+    }
+
+    if(!isAttacking && m1Buffered && attackLock<=0){
+        m1Buffered=false;
+        startM1();
+        return;
+    }
+
+    if(!isAttacking)
+        return;
+
+
+    attackElapsed+=dt;
+
+
+    const a =
+        currentAttack;
+
+
+    /*
+       ダッシュ攻撃
+    */
+
+    if(a===dashAttack){
+
+        const dir =
+            getForwardDirection();
+
+
+        if(attackElapsed<.25){
+
+            player.position.add(
+                dir.multiplyScalar(
+                    22*dt
+                )
+            );
+
+        }
+
+
+        performAttackHit();
+
+
+        if(
+            attackElapsed>=.3
+        ){
+
+            attackPhase="none";
+
+            isAttacking=false;
+
+        }
+
+
+        return;
+
+    }
+
+
+    /*
+       空中攻撃
+    */
+
+    if(a===airAttack){
+
+        const dir =
+            getForwardDirection();
+
+
+        if(attackElapsed<.24){
+
+            player.position.add(
+                dir.multiplyScalar(
+                    13*dt
+                )
+            );
+
+
+            player.position.y -=
+                4*dt;
+
+        }
+
+
+        performAttackHit();
+
+
+        if(
+            attackElapsed>=.34
+        ){
+
+            attackPhase="none";
+
+            isAttacking=false;
+
+        }
+
+
+        return;
+
+    }
+
+
+    /*
+       通常M1
+    */
+
+    if(
+        attackPhase==="startup" &&
+        attackElapsed>=a.startup
+    ){
+
+        attackPhase="active";
+
+        attackElapsed=0;
+
+    }
+
+
+    if(
+        attackPhase==="active"
+    ){
+
+        const forward =
+            getForwardDirection();
+
+
+        player.position.add(
+            forward.multiplyScalar(
+                a.forward*
+                dt*
+                8
+            )
+        );
+
+
+        performAttackHit();
+
+
+        if(
+            attackElapsed>=a.active
+        ){
+
+            attackPhase="recovery";
+
+            attackElapsed=0;
+
+        }
+
+    }
+
+
+    if(
+        attackPhase==="recovery" &&
+        attackElapsed>=a.recovery
+    ){
+
+        attackPhase="none";
+
+        isAttacking=false;
+
+    }
+
+}
+
+
+/* =====================================================
+   COMBO
+===================================================== */
+
+function updateCombo(dt){
+
+    if(comboTimer>0){
+
+        comboTimer-=dt;
+
+    }else{
+
+        comboIndex=0;
+
+        document.getElementById(
+            "comboStat"
+        ).textContent="0";
+
+    }
+
+}
+
+
+/* =====================================================
+   ENEMY AI
+===================================================== */
+
+let enemyAttackCooldown=0;
+
+let enemyDecisionTimer=0;
+
+
+let onlineRemoteActionLast="";
+
+function showOnlineCombatEvent(text){
+    const el=document.getElementById("pvpEventFeed");
+    if(!el)return;
+    el.textContent=text; el.classList.remove("show"); void el.offsetWidth; el.classList.add("show");
+    clearTimeout(window.__pvpEventTimer);
+    window.__pvpEventTimer=setTimeout(()=>el.classList.remove("show"),420);
+}
+
+function remoteOnlineActionEffect(action){
+    if(!onlineMode)return;
+    if(action==="FINISH") createHitEffect(enemy.position.clone(),4);
+    else if(action==="JAB"||action==="CROSS"||action==="HOOK") createHitEffect(enemy.position.clone(),3);
+    else if(action==="Z") createExplosion(enemy.position.clone(),8);
+    else if(action==="X"||action==="F") createHitEffect(enemy.position.clone(),4);
+    else if(action==="C") createHitEffect(enemy.position.clone(),3);
+}
+
+function updateEnemy(dt){
+
+    if(onlineMode){
+        if(enemyAlive){
+            enemy.position.x += (onlineRemoteState.x-enemy.position.x)*Math.min(1,dt*14);
+            enemy.position.y += (onlineRemoteState.y-enemy.position.y)*Math.min(1,dt*14);
+            enemy.position.z += (onlineRemoteState.z-enemy.position.z)*Math.min(1,dt*14);
+            enemy.rotation.y=onlineRemoteState.rot;
+            if(enemy.userData.knockback){
+                enemy.position.add(enemy.userData.knockback.clone().multiplyScalar(dt*3));
+                enemy.userData.knockback.multiplyScalar(Math.max(0,1-dt*9));
+                if(enemy.userData.knockback.length()<.1) enemy.userData.knockback=null;
+            }
+            enemyStun=Math.max(0,onlineRemoteState.stun||0);
+            const remoteAction=onlineRemoteState.action||"";
+            if(remoteAction && remoteAction!==onlineRemoteActionLast){
+                counterHitWindow=.34;
+                remoteOnlineActionEffect(remoteAction);
+            }
+            onlineRemoteActionLast=remoteAction;
+        }
+        return;
+    }
+
+    if(!enemyAlive)
+        return;
+
+
+    if(enemyStun>0){
+
+        enemyStun-=dt;
+
+    }
+
+
+    if(enemy.userData.knockback){
+
+        enemy.position.add(
+            enemy.userData.knockback
+            .clone()
+            .multiplyScalar(
+                dt*3
+            )
+        );
+
+
+        enemy.userData.knockback.multiplyScalar(
+            Math.max(
+                0,
+                1-dt*7
+            )
+        );
+
+
+        if(
+            enemy.userData.knockback.length()<.1
+        ){
+
+            enemy.userData.knockback=null;
+
+        }
+
+    }
+
+
+    if(enemyStun>0)
+        return;
+
+
+    const toPlayer =
+        player.position.clone()
+        .sub(enemy.position);
+
+
+    const distance =
+        toPlayer.length();
+
+
+    /*
+       AIの方向
+    */
+
+    if(distance>7){
+
+        toPlayer.normalize();
+
+
+        enemy.position.add(
+            toPlayer.multiplyScalar(
+                3.5*dt
+            )
+        );
+
+    }else if(distance>4){
+
+        /*
+           少し左右に動く
+        */
+
+        const side =
+            new THREE.Vector3(
+                -toPlayer.z,
+                0,
+                toPlayer.x
+            );
+
+
+        if(side.lengthSq()>0){
+
+            side.normalize();
+
+            enemy.position.add(
+                side.multiplyScalar(
+                    Math.sin(
+                        performance.now()*.002
+                    )*
+                    1.2*
+                    dt
+                )
+            );
+
+        }
+
+    }
+
+
+    /*
+       プレイヤーを見る
+    */
+
+    const look =
+        player.position.clone()
+        .sub(enemy.position);
+
+
+    look.y=0;
+
+
+    if(look.lengthSq()>.001){
+
+        const angle =
+            Math.atan2(
+                look.x,
+                look.z
+            );
+
+
+        enemy.rotation.y =
+            THREE.MathUtils.lerp(
+                enemy.rotation.y,
+                angle,
+                Math.min(
+                    1,
+                    dt*8
+                )
+            );
+
+    }
+
+
+    /*
+       攻撃判断
+    */
+
+    enemyDecisionTimer-=dt;
+
+
+    if(
+        distance<6.5 &&
+        enemyDecisionTimer<=0
+    ){
+
+        enemyDecisionTimer =
+            .45+
+            Math.random()*.7;
+
+
+        if(
+            Math.random()<.7
+        ){
+
+            enemyAttack();
+
+        }
+
+    }
+
+
+    /*
+       範囲制限
+    */
+
+    enemy.position.x =
+        THREE.MathUtils.clamp(
+            enemy.position.x,
+            -45,
+            45
+        );
+
+
+    enemy.position.z =
+        THREE.MathUtils.clamp(
+            enemy.position.z,
+            -45,
+            45
+        );
+
+
+    enemy.position.y =
+        THREE.MathUtils.clamp(
+            enemy.position.y,
+            -5,
+            18
+        );
+
+}
+
+
+/* =====================================================
+   ENEMY ATTACK
+===================================================== */
+
+function enemyAttack(){
+
+    if(enemyAttackCooldown>0)
+        return;
+
+
+    enemyAttackCooldown=1.15;
+
+
+    if(playerInvincible>0 || damageInvuln>0)
+        return;
+
+
+    const distance =
+        enemy.position.distanceTo(
+            player.position
+        );
+
+
+    if(distance>6.5)
+        return;
+
+
+    /*
+       プレイヤー方向を確認
+    */
+
+    const toPlayer =
+        player.position.clone()
+        .sub(enemy.position)
+        .normalize();
+
+
+    const enemyForward =
+        new THREE.Vector3(
+            0,
+            0,
+            -1
+        )
+        .applyQuaternion(
+            enemy.quaternion
+        )
+        .normalize();
+
+
+    if(
+        enemyForward.dot(toPlayer)<-.1
+    ){
+
+        return;
+
+    }
+
+
+    const rawDamage =
+        80+
+        Math.random()*40;
+
+
+    const damage =
+        Math.max(
+            10,
+            Math.round(
+                rawDamage-
+                playerDefense*.15
+            )
+        );
+
+
+    playerHP =
+        Math.max(
+            0,
+            playerHP-damage
+        );
+
+
+    playerStun=.25;
+
+    cameraShake=.2;
+
+
+    showDamage(
+        damage,
+        player.position
+    );
+
+
+    createHitEffect(
+        player.position,
+        2
+    );
+
+
+    updatePlayerHUD();
+
+
+    if(playerHP<=0){
+
+        playerDeath();
+
+    }
+
+}
+
+
+/* =====================================================
+   COOLDOWNS
+===================================================== */
+
+function updateCombatDefense(dt){
+    damageInvuln=Math.max(0,damageInvuln-dt);
+    attackHitFlash=Math.max(0,attackHitFlash-dt);
+}
+
+function updateCooldowns(dt){
+
+    for(
+        const key of
+        ["Z","X","C","F"]
+    ){
+
+        if(
+            skillCooldowns[key]>0
+        ){
+
+            skillCooldowns[key] =
+                Math.max(
+                    0,
+                    skillCooldowns[key]-dt
+                );
+
+        }
+
+
+        const box =
+            document.getElementById(
+                "skill"+key
+            );
+
+
+        const text =
+            document.getElementById(
+                "cool"+key
+            );
+
+
+        if(
+            skillCooldowns[key]>0
+        ){
+
+            box.classList.add(
+                "cooling"
+            );
+
+
+            text.textContent =
+                skillCooldowns[key]
+                .toFixed(1);
+
+        }else{
+
+            box.classList.remove(
+                "cooling"
+            );
+
+
+            text.textContent="";
+
+        }
+
+    }
+
+}
+
+
+/* =====================================================
+   ENEMY CD
+===================================================== */
+
+function updateEnemyCooldown(dt){
+    if(onlineMode) return;
+
+    if(enemyAttackCooldown>0){
+
+        enemyAttackCooldown-=dt;
+
+    }
+
+}
+
+
+/* =====================================================
+   STEP32 TACTICAL TIMERS
+===================================================== */
+function updateStep32Timers(dt){
+    counterHitWindow=Math.max(0,counterHitWindow-dt);
+}
+
+/* =====================================================
+   PLAYER HUD
+===================================================== */
+
+function updatePlayerHUD(){
+
+    const rate =
+        Math.max(
+            0,
+            playerHP/maxPlayerHP
+        );
+
+
+    document.getElementById(
+        "hp"
+    ).style.width =
+        `${rate*100}%`;
+
+
+    document.getElementById(
+        "hpText"
+    ).textContent =
+        `HP ${Math.round(playerHP)} / ${maxPlayerHP}`;
+
+    const danger=document.getElementById("dangerVignette");
+    const low=rate<=.25 && playerHP>0;
+    if(danger){
+        danger.classList.toggle("show",low);
+    }
+
+}
+
+
+/* =====================================================
+   ENEMY HUD
+===================================================== */
+
+function updateEnemyHUD(){
+
+    const rate =
+        Math.max(
+            0,
+            enemyHP/enemyMaxHP
+        );
+
+
+    document.getElementById(
+        "enemyHp"
+    ).style.width =
+        `${rate*100}%`;
+
+
+    document.getElementById(
+        "enemyHpText"
+    ).textContent =
+        `HP ${Math.round(enemyHP)} / ${enemyMaxHP}`;
+
+}
+
+
+/* =====================================================
+   DAMAGE TEXT
+===================================================== */
+
+function showDamage(
+    value,
+    pos
+){
+
+    const el =
+        document.createElement(
+            "div"
+        );
+
+
+    el.className="damage";
+
+    el.textContent =
+        `-${value}`;
+
+
+    document
+        .getElementById(
+            "damageLayer"
+        )
+        .appendChild(el);
+
+
+    const vector =
+        pos.clone()
+        .project(camera);
+
+
+    el.style.left =
+        (
+            (vector.x*.5+.5)*
+            innerWidth
+        )+
+        "px";
+
+
+    el.style.top =
+        (
+            (-vector.y*.5+.5)*
+            innerHeight
+        )+
+        "px";
+
+
+    setTimeout(
+        ()=>{
+            el.remove();
+        },
+        700
+    );
+
+}
+
+
+/* =====================================================
+   PLAYER DEATH
+===================================================== */
+
+function playerDeath(){
+
+    if(onlineMode){
+        if(!onlineMatchOver){
+            onlineSend({type:"remoteDeath"});
+            finishOnlineLose();
+        }
+        return;
+    }
+
+    document.exitPointerLock?.();
+
+
+    lockOn=false;
+
+    updateLockUI();
+
+
+    const msg =
+        document.getElementById(
+            "message"
+        );
+
+
+    msg.innerHTML =
+        "💀 YOU DIED<br>" +
+        "<span style='font-size:18px'>" +
+        "クリックして再戦" +
+        "</span>";
+
+
+    msg.style.opacity="1";
+
+
+    setTimeout(
+        ()=>{
+
+            playerHP =
+                maxPlayerHP;
+
+
+            enemyHP =
+                enemyMaxHP;
+
+
+            player.position.set(
+                0,
+                0,
+                0
+            );
+
+
+            enemy.position.set(
+                0,
+                0,
+                -18
+            );
+
+
+            enemyAlive=true;
+
+            enemy.visible=true;
+
+
+            playerStun=0;
+
+            enemyStun=0;
+
+            activeSkill=null;
+
+            isAttacking=false;
+
+            attackPhase="none";
+
+            attackLock=0;
+
+            comboIndex=0;
+
+            comboTimer=0;
+
+            dashTimer=0;
+
+            dashCooldown=0;
+
+            flashCooldown=0;
+
+            enemyAttackCooldown=0;
+
+            enemyDecisionTimer=0;
+
+
+            skillCooldowns.Z=0;
+            skillCooldowns.X=0;
+            skillCooldowns.C=0;
+            skillCooldowns.F=0;
+
+
+            playerInvincible=0;
+
+
+            msg.style.opacity="0";
+
+
+            updatePlayerHUD();
+
+            updateEnemyHUD();
+
+        },
+        1800
+    );
+
+}
+
+
+/* =====================================================
+   ENEMY DEATH
+===================================================== */
+
+function killEnemy(){
+
+    if(onlineMode){
+        if(!onlineMatchOver) finishOnlineWin();
+        return;
+    }
+
+    if(!enemyAlive)
+        return;
+
+
+    enemyAlive=false;
+
+    enemy.visible=false;
+
+
+    lockOn=false;
+
+    updateLockUI();
+
+
+    document.exitPointerLock?.();
+
+
+    const msg =
+        document.getElementById(
+            "message"
+        );
+
+
+    msg.innerHTML =
+        "🏆 WIN!<br>" +
+        "<span style='font-size:20px'>" +
+        "ENEMY DEFEATED!" +
+        "</span>";
+
+
+    msg.style.opacity="1";
+
+
+    createExplosion(
+        enemy.position,
+        45
+    );
+
+
+    setTimeout(
+        ()=>{
+
+            enemyHP =
+                enemyMaxHP;
+
+
+            enemy.position.set(
+                (Math.random()-.5)*30,
+                Math.random()*8,
+                -25
+            );
+
+
+            enemy.userData.knockback=null;
+
+            enemy.visible=true;
+
+            enemyAlive=true;
+
+            enemyStun=0;
+
+            enemyAttackCooldown=0;
+
+            enemyDecisionTimer=0;
+
+
+            msg.style.opacity="0";
+
+
+            updateEnemyHUD();
+
+        },
+        2500
+    );
+
+}
+
+
+/* =====================================================
+   PARTICLES
+===================================================== */
+
+const hitParticles=[];
+
+
+function updateParticles(dt){
+
+    for(
+        let i=hitParticles.length-1;
+        i>=0;
+        i--
+    ){
+
+        const p =
+            hitParticles[i];
+
+
+        p.userData.life-=dt;
+
+
+        if(p.userData.velocity){
+
+            p.position.add(
+                p.userData.velocity
+                .clone()
+                .multiplyScalar(dt)
+            );
+
+
+            p.userData.velocity.multiplyScalar(
+                Math.max(
+                    0,
+                    1-dt*4
+                )
+            );
+
+        }
+
+
+        if(
+            p.material &&
+            p.material.opacity!==undefined
+        ){
+
+            p.material.opacity =
+                Math.max(
+                    0,
+                    p.userData.life*2
+                );
+
+        }
+
+
+        if(
+            p.userData.life<=0
+        ){
+
+            scene.remove(p);
+
+            p.geometry.dispose();
+
+            p.material.dispose();
+
+            hitParticles.splice(
+                i,
+                1
+            );
+
+        }
+
+    }
+
+}
+
+
+/* =====================================================
+   FISH ANIMATION
+===================================================== */
+
+let animationTime=0;
+
+
+function animateFish(dt){
+
+    animationTime+=dt;
+
+    const flap=Math.sin(animationTime*8)*.10;
+    const swim=Math.sin(animationTime*4.2);
+
+    function animateOne(fish, attacking=false, skill=false){
+        const fins=fish.userData.fins||[];
+        const body=fish.userData.body;
+        const rear=fish.userData.rear;
+        const mouth=fish.userData.mouth;
+
+        if(fins.length>=4){
+            fins[0].rotation.z=flap*.55;
+            fins[1].rotation.z=Math.PI-flap*.55;
+            fins[2].rotation.x=flap*.9;
+            fins[3].rotation.x=-flap*.9;
+        }
+
+        if(body){
+            body.scale.y=1.02+Math.sin(animationTime*6)*.012;
+            body.scale.z=1.18+Math.sin(animationTime*6+.5)*.018;
+        }
+
+        if(rear){
+            rear.rotation.y=Math.sin(animationTime*7)*.07;
+        }
+
+        if(mouth){
+            mouth.scale.set(
+                1,
+                1+(attacking?.16:0)+Math.max(0,swim)*.025,
+                1
+            );
+        }
+
+        if(attacking){
+            fish.rotation.z=Math.sin(animationTime*30)*.08*Math.max(1,comboIndex);
+            fish.rotation.x=Math.sin(animationTime*24)*.035;
+        }else if(skill){
+            fish.rotation.z=Math.sin(animationTime*35)*.14;
+            fish.rotation.x=Math.sin(animationTime*28)*.05;
+        }else{
+            fish.rotation.z=THREE.MathUtils.lerp(fish.rotation.z,0,dt*8);
+            fish.rotation.x=THREE.MathUtils.lerp(fish.rotation.x,0,dt*8);
+        }
+    }
+
+    animateOne(player,isAttacking,!!activeSkill);
+    animateOne(enemy,false,false);
+
+}
+
+/* =====================================================
+   HIT STOP
+===================================================== */
+
+function updateHitStop(dt){
+
+    if(hitStop>0){
+
+        hitStop-=dt;
+
+        return true;
+
+    }
+
+    return false;
+
+}
+
+
+/* =====================================================
+   CAMERA
+===================================================== */
+
+function updateCamera(dt){
+
+    /*
+       ロックオン中は少し近づく
+    */
+
+    const distance =
+        lockOn
+        ? 10
+        : cameraDistance;
+
+
+    const horizontal =
+        Math.cos(
+            cameraPitch
+        )*
+        distance;
+
+
+    const vertical =
+        Math.sin(
+            cameraPitch
+        )*
+        distance;
+
+
+    let desired;
+
+
+    if(lockOn && enemyAlive){
+
+        /*
+           プレイヤーと敵の中間方向を意識
+        */
+
+        const center =
+            player.position.clone()
+            .lerp(
+                enemy.position,
+                .25
+            );
+
+
+        desired =
+            new THREE.Vector3(
+
+                player.position.x+
+                Math.sin(cameraYaw)*
+                horizontal,
+
+                player.position.y+
+                3+
+                vertical,
+
+                player.position.z+
+                Math.cos(cameraYaw)*
+                horizontal
+
+            );
+
+    }else{
+
+        desired =
+            new THREE.Vector3(
+
+                player.position.x+
+                Math.sin(cameraYaw)*
+                horizontal,
+
+                player.position.y+
+                3+
+                vertical,
+
+                player.position.z+
+                Math.cos(cameraYaw)*
+                horizontal
+
+            );
+
+    }
+
+
+    if(cameraShake>0){
+
+        desired.x +=
+            (Math.random()-.5)*
+            cameraShake;
+
+
+        desired.y +=
+            (Math.random()-.5)*
+            cameraShake;
+
+
+        desired.z +=
+            (Math.random()-.5)*
+            cameraShake;
+
+
+        cameraShake *=
+            Math.max(
+                0,
+                1-dt*12
+            );
+
+    }
+
+
+    camera.position.lerp(
+        desired,
+        1-Math.pow(.001,dt)
+    );
+
+
+    let target =
+        player.position.clone();
+
+
+    target.y+=1;
+
+
+    /*
+       ロックオン時は敵との中間を少し見る
+    */
+
+    if(
+        lockOn &&
+        enemyAlive
+    ){
+
+        target =
+            player.position.clone()
+            .lerp(
+                enemy.position,
+                .3
+            );
+
+
+        target.y+=1;
+
+    }
+
+
+    camera.lookAt(
+        target
+    );
+
+}
+
+
+/* =====================================================
+   MAIN LOOP
+===================================================== */
+
+let previousTime =
+    performance.now();
+
+
+function animate(){
+
+    requestAnimationFrame(
+        animate
+    );
+
+
+    const now =
+        performance.now();
+
+
+    const dt =
+        Math.min(
+            .05,
+            (now-previousTime)/1000
+        );
+
+
+    previousTime=now;
+
+
+    const stopped =
+        updateHitStop(dt);
+
+
+    if(!stopped && (!onlineMode || onlineBattleLive)){
+
+        handleSpecialInput();
+
+        updatePlayer(dt);
+
+        if(onlineMode && onlineConnected && performance.now()-onlineLastSend>50){
+            onlineLastSend=performance.now();
+            onlineSend({
+                type:"state",
+                seq:++onlineStateSeq,
+                x:player.position.x,
+                y:player.position.y,
+                z:player.position.z,
+                rot:player.rotation.y,
+                hp:playerHP,
+                alive:playerHP>0,
+                stun:playerStun,
+                attack:currentAttack ? currentAttack.name : "",
+                action:activeSkill || (currentAttack ? currentAttack.name : "")
+            });
+            if(!onlinePingSent || performance.now()-onlinePingSent>1000){ onlinePingSent=performance.now(); onlineSend({type:"ping",t:onlinePingSent}); }
+        }
+
+        updateAttack(dt);
+
+        updateSkills(dt);
+    updateStep32Timers(dt);
+
+        updateSkillProjectiles(dt);
+
+        updateCombo(dt);
+
+        updateEnemy(dt);
+
+        updateEnemyCooldown(dt);
+
+        updateCombatDefense(dt);
+    updateCooldowns(dt);
+
+        animateFish(dt);
+
+        updateParticles(dt);
+
+    }
+
+
+    if(dashCooldown>0)
+        dashCooldown-=dt;
+
+
+    if(flashCooldown>0)
+        flashCooldown-=dt;
+
+
+    if(playerInvincible>0)
+        playerInvincible-=dt;
+
+
+    updateCamera(dt);
+
+
+    renderer.render(
+        scene,
+        camera
+    );
+
+}
+
+
+/* =====================================================
+   RESIZE
+===================================================== */
+
+window.addEventListener(
+    "resize",
+    ()=>{
+
+        camera.aspect =
+            innerWidth/
+            innerHeight;
+
+
+        camera.updateProjectionMatrix();
+
+
+        renderer.setSize(
+            innerWidth,
+            innerHeight
+        );
+
+    }
+);
+
+
+/* =====================================================
+   START
+===================================================== */
+
+
+const onlineBtn=document.getElementById("onlineBtn");
+const onlinePanel=document.getElementById("onlinePanel");
+const createRoomBtn=document.getElementById("createRoomBtn");
+const joinRoomBtn=document.getElementById("joinRoomBtn");
+const closeOnlineBtn=document.getElementById("closeOnlineBtn");
+const onlineStartBtn=document.getElementById("onlineStart");
+
+if(onlineBtn){
+    onlineBtn.addEventListener("click",()=>{
+        onlinePanel.style.display="flex";
+    });
+}
+if(closeOnlineBtn){
+    closeOnlineBtn.addEventListener("click",()=>{
+        onlinePanel.style.display="none";
+        resetOnlineConnection();
+        const menu=document.getElementById("onlineMenu");
+        const waiting=document.getElementById("onlineWaiting");
+        if(menu) menu.style.display="block";
+        if(waiting) waiting.style.display="none";
+    });
+}
+if(createRoomBtn) createRoomBtn.addEventListener("click",createOnlineRoom);
+if(joinRoomBtn) joinRoomBtn.addEventListener("click",joinOnlineRoom);
+if(onlineStartBtn) onlineStartBtn.addEventListener("click",startOnlineBattle);
+const pvpRematchBtn=document.getElementById("pvpRematchBtn");
+const pvpLobbyBtn=document.getElementById("pvpLobbyBtn");
+if(pvpRematchBtn) pvpRematchBtn.addEventListener("click",requestRematch);
+if(pvpLobbyBtn) pvpLobbyBtn.addEventListener("click",()=>{document.getElementById("pvpResult").style.display="none";onlineMode=false;resetOnlineConnection();document.getElementById("onlinePanel").style.display="flex";});
+
+const startBtn = document.getElementById("startBtn");
+const startScreen = document.getElementById("start");
+
+function startBattle(){
+    onlineMode=false;
+    if(!startScreen) return;
+    startScreen.style.display = "none";
+    startScreen.style.pointerEvents = "none";
+    if(document.body.requestPointerLock){
+        document.body.requestPointerLock();
+    }
+}
+
+if(startBtn){
+    startBtn.addEventListener("click", startBattle);
+    startBtn.addEventListener("pointerdown", function(e){
+        e.preventDefault();
+        startBattle();
+    });
+}
+
+
+/* =====================================================
+   INITIAL
+===================================================== */
+
+updatePlayerHUD();
+
+updateEnemyHUD();
+
+updateLockUI();
+
+animate();
+
+</script>
+
+
+<div id="onlineNetHud"><span class="dot"></span><span id="onlineNetText">ONLINE • 0ms</span></div>
+
+<script>
+/* STEP34 ranked matchmaking layer */
+(function(){
+  const rpKeyCandidates=["MolaFarm_Ranked_V1","MolaFarm_Rank_V1"];
+  const panel=document.getElementById("rankedPanel");
+  const searchBtn=document.getElementById("rankedSearchBtn");
+  const cancelBtn=document.getElementById("rankedCancelBtn");
+  const found=document.getElementById("rankMatchFound");
+  const status=document.getElementById("rankedStatus");
+  const timer=document.getElementById("rankedTimer");
+  const rangeText=document.getElementById("rankedRangeText");
+  const myRank=document.getElementById("rankedMyRank");
+  const myRP=document.getElementById("rankedMyRP");
+  const oppName=document.getElementById("rankedOpponentName");
+  const oppRank=document.getElementById("rankedOpponentRank");
+  const roomBtn=document.getElementById("rankedRoomBtn");
+
+  let searching=false, startedAt=0, timerId=null;
+
+  function readRanked(){
+    for(const k of rpKeyCandidates){
+      try{
+        const v=JSON.parse(localStorage.getItem(k)||"null");
+        if(v && (v.rp!=null || v.rating!=null)) return v;
+      }catch(e){}
+    }
+    return null;
+  }
+  function getRP(){
+    const v=readRanked();
+    if(v) return Number(v.rp ?? v.rating ?? 1000);
+    return 1000;
+  }
+  function rankName(rp){
+    if(rp>=2000) return "👑 MASTER";
+    if(rp>=1700) return "💠 DIAMOND";
+    if(rp>=1450) return "💎 PLATINUM";
+    if(rp>=1250) return "🥇 GOLD";
+    if(rp>=1100) return "🥈 SILVER";
+    return "🥉 BRONZE";
+  }
+  function refresh(){
+    const rp=getRP();
+    if(myRP) myRP.textContent=rp+" RP";
+    if(myRank) myRank.textContent=rankName(rp);
+  }
+  function openRanked(){
+    if(!panel) return;
+    refresh();
+    panel.style.display="flex";
+    if(found) found.style.display="none";
+    if(status) status.textContent="対戦相手を探す準備中…";
+    if(timer) timer.textContent="00:00";
+  }
+  function stop(){
+    searching=false;
+    if(timerId) clearInterval(timerId);
+    timerId=null;
+    if(status) status.textContent="検索を停止しました。";
+    if(searchBtn) searchBtn.disabled=false;
+  }
+  function begin(){
+    if(searching) return;
+    searching=true;
+    startedAt=Date.now();
+    if(searchBtn) searchBtn.disabled=true;
+    if(found) found.style.display="none";
+    if(status) status.textContent="🔎 対戦相手を検索中…";
+    timerId=setInterval(()=>{
+      const sec=Math.floor((Date.now()-startedAt)/1000);
+      const mm=String(Math.floor(sec/60)).padStart(2,"0");
+      const ss=String(sec%60).padStart(2,"0");
+      if(timer) timer.textContent=mm+":"+ss;
+      const range=Math.min(500,100+Math.floor(sec/15)*50);
+      if(rangeText) rangeText.textContent="±"+range+" RP";
+      if(sec>=3 && found && Math.random()<0.018){
+        searching=false;
+        clearInterval(timerId); timerId=null;
+        if(status) status.textContent="⚔️ 対戦相手が見つかりました！";
+        const base=getRP();
+        const delta=Math.min(500,100+Math.floor(sec/15)*50);
+        const opponent=base + Math.floor((Math.random()*2-1)*delta);
+        if(oppName) oppName.textContent="RANKED PLAYER";
+        if(oppRank) oppRank.textContent=rankName(opponent)+"  /  "+opponent+" RP";
+        found.style.display="block";
+        if(searchBtn) searchBtn.disabled=false;
+      }
+    },1000);
+  }
+
+  window.openRankedMatch=openRanked;
+
+  /* Add a ranked button to the existing online area without replacing its controls. */
+  const onlinePanel=document.getElementById("onlinePanel");
+  if(onlinePanel && !document.getElementById("rankedOpenBtn")){
+    const b=document.createElement("button");
+    b.id="rankedOpenBtn";
+    b.className="onlineAction primaryAction";
+    b.textContent="🏆 ランクマッチ";
+    const box=onlinePanel.querySelector("#onlineBox");
+    const close=onlinePanel.querySelector("#closeOnlineBtn");
+    if(box && close) box.insertBefore(b,close);
+    b.addEventListener("click",()=>{
+      onlinePanel.style.display="none";
+      openRanked();
+    });
+  }
+
+  searchBtn?.addEventListener("click",begin);
+  cancelBtn?.addEventListener("click",()=>{
+    stop();
+    if(panel) panel.style.display="none";
+    const op=document.getElementById("onlinePanel");
+    if(op) op.style.display="flex";
+  });
+
+  roomBtn?.addEventListener("click",()=>{
+    const op=document.getElementById("onlinePanel");
+    if(panel) panel.style.display="none";
+    if(op) op.style.display="flex";
+    const create=document.getElementById("createRoomBtn");
+    if(create) create.click();
+  });
+
+  refresh();
+})();
+</script>
+
+</body>
+</html>
