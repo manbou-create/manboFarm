@@ -354,10 +354,32 @@ button:hover {
 @media(max-width:600px){.online-grid,.battle-fighters{grid-template-columns:1fr}}
 
 </style>
+
+<style id="pvp-navigation-style">
+#pvpNavButton{
+  position:fixed;right:18px;top:18px;z-index:9999;
+  padding:13px 20px;border:0;border-radius:14px;
+  background:linear-gradient(135deg,#153d68,#1976d2);
+  color:#fff;font-size:16px;font-weight:900;cursor:pointer;
+  box-shadow:0 8px 25px rgba(0,0,0,.22);
+  transition:transform .15s,filter .15s;
+}
+#pvpNavButton:hover{transform:translateY(-2px);filter:brightness(1.12)}
+@media(max-width:600px){#pvpNavButton{right:10px;top:10px;padding:10px 14px;font-size:14px}}
+</style>
+
 </head>
 
 
 <body>
+
+<button id="pvpNavButton" type="button">⚔️ PvP対戦へ</button>
+<script id="pvpNavigationScript">
+document.getElementById("pvpNavButton")?.addEventListener("click",()=>{
+  location.href="pvp.html";
+});
+</script>
+
 
 <h1>🐟 マンボウFarm 🌊</h1>
 
