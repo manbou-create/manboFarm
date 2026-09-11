@@ -647,7 +647,7 @@ body.inBattle, body.inBattle * { cursor:none !important; }
 body.inBattle button, body.inBattle input { cursor:none !important; }
 </style>
 <style id="farmBackAnchorStyle">
-#farmBackButton{position:fixed;top:18px;left:18px;z-index:99999;display:inline-flex;align-items:center;gap:6px;padding:11px 16px;border-radius:14px;background:rgba(7,20,34,.9);color:#fff;text-decoration:none;font-weight:900;border:1px solid rgba(150,220,255,.28);box-shadow:0 8px 24px rgba(0,0,0,.25);backdrop-filter:blur(8px);cursor:pointer}
+#farmBackButton{position:fixed;top:18px;left:18px;z-index:2147483647;display:inline-flex;align-items:center;gap:6px;padding:13px 18px;border-radius:14px;background:rgba(7,20,34,.96);color:#fff;text-decoration:none;font-weight:900;border:2px solid rgba(150,220,255,.45);box-shadow:0 8px 30px rgba(0,0,0,.4);backdrop-filter:blur(8px);cursor:pointer;pointer-events:auto;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 #farmBackButton:hover{filter:brightness(1.12);transform:translateY(-1px)}
 @media(max-width:600px){#farmBackButton{top:10px;left:10px;padding:9px 12px;font-size:13px}}
 </style>
@@ -660,7 +660,21 @@ body.inBattle button, body.inBattle input { cursor:none !important; }
 
 <body>
 
-<a id="farmBackButton" href="https://manbou-create.github.io/manboFarm/" aria-label="マンボウFarmへ戻る">← 🏠 マンボウFarmへ戻る</a>
+<a id="farmBackButton" href="./index.html" aria-label="マンボウFarmへ戻る">← 🏠 マンボウFarmへ戻る</a>
+<script>
+/* FARM RETURN: always keep the return link clickable, including touch devices and pointer-lock battle mode. */
+(function(){
+  function goFarm(e){
+    const el=e.target && e.target.closest ? e.target.closest('#farmBackButton') : null;
+    if(!el) return;
+    e.preventDefault();
+    e.stopPropagation();
+    window.location.assign('./index.html');
+  }
+  document.addEventListener('pointerdown',goFarm,true);
+  document.addEventListener('click',goFarm,true);
+})();
+</script>
 
 
 
