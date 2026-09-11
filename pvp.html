@@ -600,6 +600,10 @@ canvas{
 .vsNames{display:flex;justify-content:center;align-items:center;gap:22px;font-size:21px;font-weight:900;margin:12px 0}
 .vsNames .vs{font-size:14px;opacity:.6}
 
+
+/* バトル中はマウスカーソルを完全に非表示 */
+body.inBattle, body.inBattle * { cursor: none !important; }
+body.inBattle button, body.inBattle input { cursor: none !important; }
 </style>
 
 <style id="step28OnlineCss">
@@ -1725,6 +1729,7 @@ function onlineRoomId(code){
 }
 
 function resetOnlineConnection(){
+    document.body.classList.remove("inBattle");
     try{ onlineConn && onlineConn.close(); }catch(e){}
     try{ onlinePeer && onlinePeer.destroy(); }catch(e){}
     onlineConn=null;
@@ -1827,6 +1832,7 @@ function applyRankResult(win){const before=rankData.rp;let delta=win?25: -18;if(
 renderRank();
 
 function showPvpResult(win,reason){
+    document.body.classList.remove("inBattle");
     onlineMatchOver=true;
     applyRankResult(win);
     try{document.exitPointerLock?.();}catch(e){}
@@ -2019,6 +2025,7 @@ function runOnlineCountdown(){
 
 function beginOnlineBattle(){
     if(!onlineMode || !onlineConnected) return;
+    document.body.classList.add("inBattle");
     document.getElementById("onlinePanel").style.display="none";
     document.getElementById("start").style.display="none";
     document.getElementById("start").style.pointerEvents="none";
@@ -2292,7 +2299,7 @@ window.addEventListener(
 
         if(
             !e.repeat &&
-            mouseLocked
+            gameStarted
         ){
 
             if(e.code==="KeyZ")
@@ -2330,6 +2337,7 @@ window.addEventListener(
 ===================================================== */
 
 let mouseLocked=false;
+let gameStarted=false;
 
 let cameraYaw=0;
 
@@ -2366,7 +2374,7 @@ document.addEventListener(
     "mousemove",
     e=>{
 
-        if(!mouseLocked)
+        if(!mouseLocked && !gameStarted)
             return;
 
 
@@ -5390,13 +5398,9 @@ window.addEventListener(
 
 
 
-</script>
-<style id="fishSelectionCss">
-/* =====================================================
-   START
-===================================================== */
 
 
+/* STEP35 UI FIX: online lobby + fish selection + start */
 const onlineBtn=document.getElementById("onlineBtn");
 const onlinePanel=document.getElementById("onlinePanel");
 const createRoomBtn=document.getElementById("createRoomBtn");
@@ -5476,8 +5480,11 @@ function startBattle(){
     if(!startScreen) return;
     startScreen.style.display = "none";
     startScreen.style.pointerEvents = "none";
+    gameStarted=true;
+    // キー入力を確実に有効化。Pointer Lockに失敗してもWASD/スキルが動くようにする
+    mouseLocked=true;
     if(!matchMedia("(pointer:coarse)").matches && document.body.requestPointerLock){
-        document.body.requestPointerLock();
+        try{ document.body.requestPointerLock(); }catch(e){}
     }
 }
 
@@ -5501,9 +5508,7 @@ updateEnemyHUD();
 updateLockUI();
 
 animate();
-
 </script>
-
 
 <div id="onlineNetHud"><span class="dot"></span><span id="onlineNetText">ONLINE • 0ms</span></div>
 
