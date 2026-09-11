@@ -600,10 +600,6 @@ canvas{
 .vsNames{display:flex;justify-content:center;align-items:center;gap:22px;font-size:21px;font-weight:900;margin:12px 0}
 .vsNames .vs{font-size:14px;opacity:.6}
 
-
-/* バトル中はマウスカーソルを完全に非表示 */
-body.inBattle, body.inBattle * { cursor: none !important; }
-body.inBattle button, body.inBattle input { cursor: none !important; }
 </style>
 
 <style id="step28OnlineCss">
@@ -646,6 +642,10 @@ body.inBattle button, body.inBattle input { cursor: none !important; }
 @media (max-width:520px){.mobileBtn{width:54px;height:54px;font-size:14px}#mbAttack{width:72px;height:72px;font-size:19px;right:14px;bottom:18px}#mbQ{right:92px;bottom:23px}#mbR{right:92px;bottom:84px}#mbT{right:24px;bottom:96px}#mbZ{right:168px;bottom:25px}#mbX{right:168px;bottom:86px}#mbC{right:228px;bottom:25px}#mbF{right:228px;bottom:86px}#mbUp{left:155px;bottom:88px}#mbDown{left:155px;bottom:26px}#mobileStick{width:116px;height:116px;left:14px;bottom:16px}}
 </style>
 
+<style id="cursorHideFix">
+body.inBattle, body.inBattle * { cursor:none !important; }
+body.inBattle button, body.inBattle input { cursor:none !important; }
+</style>
 </head>
 
 <body>
@@ -801,23 +801,7 @@ document.getElementById("farmBackButton")?.addEventListener("click",()=>{
   <button class="mobileBtn" id="mbZ">Z</button><button class="mobileBtn" id="mbX">X</button><button class="mobileBtn" id="mbC">C</button><button class="mobileBtn" id="mbF">F</button>
   <button class="mobileBtn" id="mbUp">▲</button><button class="mobileBtn" id="mbDown">▼</button>
 </div>
-<script id="mobileControlsScript">
-(function(){
- const c=document.getElementById('mobileControls'), stick=document.getElementById('mobileStick'), knob=document.getElementById('mobileStickKnob');
- if(!c||!stick||!knob)return;
- function press(code){keys[code]=true;}
- function release(code){keys[code]=false;}
- function action(code){ if(code==='KeyT'){toggleLockOn();return;} if(code==='KeyQ'){startDash();return;} if(code==='KeyR'){flashStep();return;} if(['KeyZ','KeyX','KeyC','KeyF'].includes(code)){startSkill(code.slice(3));return;} }
- function bind(id,code){const b=document.getElementById(id); if(!b)return; b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture?.(e.pointerId);action(code);press(code)}); b.addEventListener('pointerup',e=>{e.preventDefault();release(code)}); b.addEventListener('pointercancel',()=>release(code));}
- bind('mbQ','KeyQ');bind('mbR','KeyR');bind('mbT','KeyT');bind('mbZ','KeyZ');bind('mbX','KeyX');bind('mbC','KeyC');bind('mbF','KeyF');bind('mbUp','Space');bind('mbDown','ControlLeft');
- const atk=document.getElementById('mbAttack'); atk?.addEventListener('pointerdown',e=>{e.preventDefault();atk.setPointerCapture?.(e.pointerId);startM1();});
- let active=null;
- function stickMove(e){const r=stick.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;let dx=e.clientX-cx,dy=e.clientY-cy;const max=r.width*.34,len=Math.hypot(dx,dy)||1;if(len>max){dx=dx/len*max;dy=dy/len*max}knob.style.transform=`translate(${dx}px,${dy}px)`;const nx=dx/max,ny=dy/max;keys.KeyW=ny<-.22;keys.KeyS=ny>.22;keys.KeyA=nx<-.22;keys.KeyD=nx>.22;}
- stick.addEventListener('pointerdown',e=>{e.preventDefault();active=e.pointerId;stick.setPointerCapture?.(e.pointerId);stickMove(e)});stick.addEventListener('pointermove',e=>{if(e.pointerId===active)stickMove(e)});function stickUp(e){if(e.pointerId!==active)return;active=null;knob.style.transform='translate(0,0)';keys.KeyW=keys.KeyS=keys.KeyA=keys.KeyD=false}stick.addEventListener('pointerup',stickUp);stick.addEventListener('pointercancel',stickUp);
- // Touch devices should not wait for mouse pointer-lock.
- window.addEventListener('touchstart',()=>{mouseLocked=true;},{passive:true});
-})();
-</script>
+
 
 <!-- =====================================================
      HUD
@@ -2025,7 +2009,6 @@ function runOnlineCountdown(){
 
 function beginOnlineBattle(){
     if(!onlineMode || !onlineConnected) return;
-    document.body.classList.add("inBattle");
     document.getElementById("onlinePanel").style.display="none";
     document.getElementById("start").style.display="none";
     document.getElementById("start").style.pointerEvents="none";
@@ -5477,6 +5460,7 @@ const startScreen = document.getElementById("start");
 
 function startBattle(){
     onlineMode=false;
+    document.body.classList.add("inBattle");
     if(!startScreen) return;
     startScreen.style.display = "none";
     startScreen.style.pointerEvents = "none";
@@ -5495,6 +5479,52 @@ if(startBtn){
         startBattle();
     });
 }
+
+/* Mobile / tablet controls: wired inside the module so they can access game state. */
+(function setupMobileControls(){
+    const c=document.getElementById("mobileControls");
+    const stick=document.getElementById("mobileStick");
+    const knob=document.getElementById("mobileStickKnob");
+    if(!c||!stick||!knob) return;
+    const setKey=(code,v)=>{ if(typeof keys!=="undefined") keys[code]=v; };
+    const action=(code)=>{
+        if(!gameStarted || onlineCountdownActive) return;
+        if(code==="KeyT"){ toggleLockOn(); return; }
+        if(code==="KeyQ"){ startDash(); return; }
+        if(code==="KeyR"){ flashStep(); return; }
+        if(["KeyZ","KeyX","KeyC","KeyF"].includes(code)){ startSkill(code.slice(3)); return; }
+    };
+    function bind(id,code){
+        const b=document.getElementById(id); if(!b) return;
+        const down=e=>{e.preventDefault();e.stopPropagation();b.setPointerCapture?.(e.pointerId);action(code);setKey(code,true);};
+        const up=e=>{e.preventDefault();e.stopPropagation();setKey(code,false);};
+        b.addEventListener("pointerdown",down,{passive:false});
+        b.addEventListener("pointerup",up,{passive:false});
+        b.addEventListener("pointercancel",up,{passive:false});
+        b.addEventListener("lostpointercapture",()=>setKey(code,false));
+    }
+    bind("mbQ","KeyQ"); bind("mbR","KeyR"); bind("mbT","KeyT");
+    bind("mbZ","KeyZ"); bind("mbX","KeyX"); bind("mbC","KeyC"); bind("mbF","KeyF");
+    bind("mbUp","Space"); bind("mbDown","ControlLeft");
+    const atk=document.getElementById("mbAttack");
+    if(atk){
+        atk.addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();atk.setPointerCapture?.(e.pointerId);if(gameStarted&&!onlineCountdownActive)startM1();},{passive:false});
+    }
+    let active=null;
+    function moveStick(e){
+        const r=stick.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+        let dx=e.clientX-cx,dy=e.clientY-cy; const max=r.width*.34; const len=Math.hypot(dx,dy)||1;
+        if(len>max){dx=dx/len*max;dy=dy/len*max;}
+        knob.style.transform=`translate(${dx}px,${dy}px)`;
+        const nx=dx/max,ny=dy/max;
+        setKey("KeyW",ny<-.22); setKey("KeyS",ny>.22); setKey("KeyA",nx<-.22); setKey("KeyD",nx>.22);
+    }
+    const endStick=e=>{if(active!==e.pointerId)return;active=null;knob.style.transform="translate(0,0)";setKey("KeyW",false);setKey("KeyS",false);setKey("KeyA",false);setKey("KeyD",false);};
+    stick.addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();active=e.pointerId;stick.setPointerCapture?.(e.pointerId);moveStick(e);},{passive:false});
+    stick.addEventListener("pointermove",e=>{if(active===e.pointerId)moveStick(e);},{passive:false});
+    stick.addEventListener("pointerup",endStick,{passive:false});
+    stick.addEventListener("pointercancel",endStick,{passive:false});
+})();
 
 
 /* =====================================================
