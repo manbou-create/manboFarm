@@ -646,6 +646,11 @@ canvas{
 body.inBattle, body.inBattle * { cursor:none !important; }
 body.inBattle button, body.inBattle input { cursor:none !important; }
 </style>
+
+/* 出撃ボタンをマンボウ選択画面の上部に固定 */
+#fishSelectBox{position:relative;}
+#fishSelectClose{position:sticky;top:0;z-index:20;width:100%;margin:10px 0 14px;padding:15px 18px;border:0;border-radius:14px;background:#1f9dff;color:#fff;font-size:17px;font-weight:900;box-shadow:0 8px 24px rgba(0,0,0,.28);cursor:pointer;}
+#fishSelectClose:hover{filter:brightness(1.08);transform:translateY(-1px);}
 </head>
 
 <body>
@@ -717,9 +722,9 @@ document.getElementById("farmBackButton")?.addEventListener("click",()=>{
   <div id="fishSelectBox">
     <h2>🐟 出撃マンボウを選択</h2>
     <p id="fishSelectHint">マンボウFarmで育てたマンボウから、今回の対戦に使う1匹を選んでください。</p>
-    <div id="fishGrid"></div>
     <div id="selectedFishInfo">読み込み中…</div>
     <button id="fishSelectClose">✓ このマンボウで出撃</button>
+    <div id="fishGrid"></div>
   </div>
 </div>
 
@@ -837,6 +842,8 @@ document.getElementById("farmBackButton")?.addEventListener("click",()=>{
 
         M1：
         <span id="comboStat">0</span> / 4
+        <br>
+        特性：<span id="combatTraitStat">標準</span>
 
     </div>
 
@@ -1553,6 +1560,23 @@ function getPowerFromFarm(){
 
     const individualScore = score(strongest);
 
+    /* STEP35: rarity / personality combat bonuses */
+    const rarityText = String(strongest.rarityName || strongest.rarity || "ノーマル");
+    const rarityBonus =
+        rarityText.includes("突然変異") || rarityText.includes("mutation") ? {attack:1.18, defense:1.16, hp:1.18, speed:1.08, label:"✨ 突然変異"} :
+        rarityText.includes("レジェンド") || rarityText.includes("legend") ? {attack:1.15, defense:1.13, hp:1.15, speed:1.06, label:"👑 レジェンド"} :
+        rarityText.includes("エピック") || rarityText.includes("epic") ? {attack:1.10, defense:1.09, hp:1.10, speed:1.045, label:"🟣 エピック"} :
+        rarityText.includes("レア") || rarityText.includes("rare") ? {attack:1.06, defense:1.06, hp:1.06, speed:1.03, label:"🔵 レア"} :
+        rarityText.includes("アンコモン") || rarityText.includes("uncommon") ? {attack:1.03, defense:1.03, hp:1.03, speed:1.015, label:"🟢 アンコモン"} :
+        {attack:1, defense:1, hp:1, speed:1, label:"⚪ ノーマル"};
+
+    const personalityText = String(strongest.personalityKey || strongest.personality || "");
+    let personalityBonus = {attack:1, defense:1, hp:1, speed:1, label:"標準"};
+    if(personalityText.includes("活発") || personalityText.includes("active")) personalityBonus={attack:1.03,defense:.98,hp:.98,speed:1.20,label:"⚡ 活発"};
+    else if(personalityText.includes("おっとり") || personalityText.includes("calm")) personalityBonus={attack:.98,defense:1.06,hp:1.06,speed:.82,label:"🌿 おっとり"};
+    else if(personalityText.includes("頑丈") || personalityText.includes("tough")) personalityBonus={attack:1.02,defense:1.12,hp:1.12,speed:.96,label:"🛡️ 頑丈"};
+    else if(personalityText.includes("繁殖好き") || personalityText.includes("breeding")) personalityBonus={attack:1.05,defense:1,hp:1.02,speed:1.02,label:"🥚 繁殖好き"};
+    else if(personalityText.includes("食いしん坊") || personalityText.includes("glutton")) personalityBonus={attack:1.07,defense:1.01,hp:1.04,speed:.97,label:"🍖 食いしん坊"};
 
     let rank="D";
 
@@ -1614,9 +1638,12 @@ function getPowerFromFarm(){
 
 
     return {
-        attack,
-        defense,
-        hp,
+        attack:Math.round(attack*rarityBonus.attack*personalityBonus.attack),
+        defense:Math.round(defense*rarityBonus.defense*personalityBonus.defense),
+        hp:Math.round(hp*rarityBonus.hp*personalityBonus.hp),
+        speed:rarityBonus.speed*personalityBonus.speed,
+        rarityLabel:rarityBonus.label,
+        personalityLabel:personalityBonus.label,
         rank
     };
 
@@ -3862,7 +3889,7 @@ function updatePlayer(dt){
         finalMove.normalize();
 
 
-        let speed=7;
+        let speed=7*(power.speed||1);
 
 
         if(isAttacking)
@@ -3875,7 +3902,7 @@ function updatePlayer(dt){
 
         if(dashTimer>0){
 
-            speed=32;
+            speed=32*(power.speed||1);
 
             dashTimer-=dt;
 
@@ -5423,7 +5450,15 @@ const selectedFishInfo=document.getElementById("selectedFishInfo");
 
 function fishScoreValue(f){return Number(f.growthGene||50)+Number(f.vitalityGene||50)+Number(f.breedingGene||50);}
 function fishGradeValue(f){const x=fishScoreValue(f);return x>=270?'S':x>=225?'A':x>=165?'B':x>=105?'C':'D';}
-function fishPowerPreview(f){const score=fishScoreValue(f);return Math.round(80+Number(f.size||10)*4+Number(f.weight||10)*.8+Number(f.breed||1)*3+score*.45);}
+function fishPowerPreview(f){
+  const score=fishScoreValue(f);
+  let base=80+Number(f.size||10)*4+Number(f.weight||10)*.8+Number(f.breed||1)*3+score*.45;
+  const r=fishRarityText(f);
+  const mult=r.includes("突然変異")?1.18:r.includes("レジェンド")?1.15:r.includes("エピック")?1.10:r.includes("レア")?1.06:r.includes("アンコモン")?1.03:1;
+  const p=String(f.personalityKey||f.personality||"");
+  const pm=p.includes("食いしん坊")?1.07:p.includes("活発")?1.03:p.includes("繁殖好き")?1.05:1;
+  return Math.round(base*mult*pm);
+}
 function fishRarityText(f){return f?.rarityName || f?.rarity || 'ノーマル';}
 function renderFishSelection(){
   if(!fishGrid) return;
@@ -5442,14 +5477,19 @@ function renderFishSelection(){
     fishGrid.appendChild(card);
   });
   const chosen=fishes.find(f=>String(f.id)===String(selectedFishId))||fishes[0];
-  if(chosen){selectedFishInfo.innerHTML=`選択中：<b>🐟 マンボウ #${chosen.id}</b>　${fishRarityText(chosen)}　個体値 <b>${fishGradeValue(chosen)}</b>　⚔️戦闘力 <b>${fishPowerPreview(chosen)}</b>`;}
+  if(chosen){
+  const fp=getPowerFromFarm();
+  selectedFishInfo.innerHTML=`選択中：<b>🐟 マンボウ #${chosen.id}</b>　${fishRarityText(chosen)}　個体値 <b>${fishGradeValue(chosen)}</b><br>⚔️ 戦闘力 <b>${fishPowerPreview(chosen)}</b>　攻撃 <b>${fp.attack}</b>　防御 <b>${fp.defense}</b>　HP <b>${fp.hp}</b><br>${fp.personalityLabel||"標準"} × ${fp.rarityLabel||"⚪ ノーマル"}　速度補正 ×${(fp.speed||1).toFixed(2)}`;
+}
 }
 function confirmFishSelection(){
   if(!selectedFishId && farmData?.fishes?.length) selectedFishId=farmData.fishes[0].id;
   const chosen=farmData?.fishes?.find(f=>String(f.id)===String(selectedFishId));
   if(chosen && selectedFishSummary) selectedFishSummary.textContent=`出撃：🐟 マンボウ #${chosen.id} / ${fishRarityText(chosen)} / 個体値 ${fishGradeValue(chosen)}`;
   power=getPowerFromFarm();
-  playerAttack=power.attack; playerDefense=power.defense; maxPlayerHP=power.hp; playerHP=Math.min(playerHP,maxPlayerHP); updatePlayerHUD();
+  playerAttack=power.attack; playerDefense=power.defense; maxPlayerHP=power.hp; playerHP=Math.min(playerHP,maxPlayerHP);
+  const trait=document.getElementById("combatTraitStat"); if(trait) trait.textContent=`${power.rarityLabel||"⚪ ノーマル"} / ${power.personalityLabel||"標準"}`;
+  updatePlayerHUD();
 }
 if(selectFishBtn){selectFishBtn.addEventListener('click',()=>{renderFishSelection();fishSelectPanel.style.display='flex';});}
 if(fishSelectClose){fishSelectClose.addEventListener('click',()=>{fishSelectPanel.style.display='none';confirmFishSelection();});}
