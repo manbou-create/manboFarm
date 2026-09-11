@@ -627,6 +627,21 @@ canvas{
 #farmBackButton:hover{transform:translateY(-2px);filter:brightness(1.15)}
 </style>
 
+
+<style id="mobileControlsCss">
+#mobileControls{display:none;position:fixed;inset:0;z-index:260;pointer-events:none;touch-action:none}
+#mobileStick{position:absolute;left:22px;bottom:24px;width:132px;height:132px;border-radius:50%;background:rgba(255,255,255,.10);border:2px solid rgba(255,255,255,.25);pointer-events:auto;touch-action:none}
+#mobileStickKnob{position:absolute;left:50%;top:50%;width:58px;height:58px;margin:-29px;border-radius:50%;background:rgba(110,220,255,.42);border:2px solid rgba(180,245,255,.7);box-shadow:0 0 22px rgba(80,210,255,.25)}
+.mobileBtn{position:absolute;width:64px;height:64px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(7,28,45,.78);color:#fff;font-weight:1000;font-size:16px;pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.mobileBtn:active{transform:scale(.92);filter:brightness(1.3)}
+#mbAttack{right:24px;bottom:28px;width:84px;height:84px;background:rgba(30,130,190,.82);font-size:22px}
+#mbQ{right:124px;bottom:35px} #mbR{right:124px;bottom:108px} #mbT{right:40px;bottom:122px}
+#mbZ{right:204px;bottom:38px} #mbX{right:204px;bottom:111px} #mbC{right:284px;bottom:38px} #mbF{right:284px;bottom:111px}
+#mbUp{left:170px;bottom:112px} #mbDown{left:170px;bottom:38px}
+@media (pointer:coarse), (max-width:800px){#mobileControls{display:block}#hud{transform:scale(.88);transform-origin:top left}#enemyHud{transform:scale(.82);transform-origin:top right}#pvpStatus{font-size:11px;max-width:65vw}}
+@media (max-width:520px){.mobileBtn{width:54px;height:54px;font-size:14px}#mbAttack{width:72px;height:72px;font-size:19px;right:14px;bottom:18px}#mbQ{right:92px;bottom:23px}#mbR{right:92px;bottom:84px}#mbT{right:24px;bottom:96px}#mbZ{right:168px;bottom:25px}#mbX{right:168px;bottom:86px}#mbC{right:228px;bottom:25px}#mbF{right:228px;bottom:86px}#mbUp{left:155px;bottom:88px}#mbDown{left:155px;bottom:26px}#mobileStick{width:116px;height:116px;left:14px;bottom:16px}}
+</style>
+
 </head>
 
 <body>
@@ -672,6 +687,9 @@ document.getElementById("farmBackButton")?.addEventListener("click",()=>{
             TAB：操作説明
         </p>
 
+        <button id="selectFishBtn" style="margin-top:15px;border:1px solid rgba(255,255,255,.25);padding:12px 28px;border-radius:12px;background:#183f55;color:white;font-size:16px;font-weight:bold;cursor:pointer;">🐟 出撃マンボウを選択</button>
+        <div id="selectedFishSummary" style="margin-top:10px;opacity:.85;font-size:13px;">出撃：自動選択</div>
+        <br>
         <button id="startBtn">
             BATTLE START
         </button>
@@ -687,6 +705,19 @@ document.getElementById("farmBackButton")?.addEventListener("click",()=>{
 
 
 
+
+<!-- =====================================================
+     FISH SELECTION
+===================================================== -->
+<div id="fishSelectPanel">
+  <div id="fishSelectBox">
+    <h2>🐟 出撃マンボウを選択</h2>
+    <p id="fishSelectHint">マンボウFarmで育てたマンボウから、今回の対戦に使う1匹を選んでください。</p>
+    <div id="fishGrid"></div>
+    <div id="selectedFishInfo">読み込み中…</div>
+    <button id="fishSelectClose">✓ このマンボウで出撃</button>
+  </div>
+</div>
 
 <!-- =====================================================
      ONLINE MATCHMAKING / WAITING SCREEN
@@ -756,6 +787,33 @@ document.getElementById("farmBackButton")?.addEventListener("click",()=>{
 </div>
 
 <div id="pvpResult"><div id="pvpResultBox"><div id="pvpResultTitle">VICTORY</div><div id="pvpResultText"></div><div id="rankResult"><div class="rankDelta" id="rankDelta"></div><div class="rankStats" id="rankStats"></div></div><button class="pvpResultBtn" id="pvpRematchBtn">🔄 再戦</button><button class="pvpResultBtn" id="pvpLobbyBtn">🚪 ロビーへ</button></div></div>
+
+
+<!-- Mobile / Tablet controls -->
+<div id="mobileControls">
+  <div id="mobileStick"><div id="mobileStickKnob"></div></div>
+  <button class="mobileBtn" id="mbAttack">⚔️</button>
+  <button class="mobileBtn" id="mbQ">Q</button><button class="mobileBtn" id="mbR">R</button><button class="mobileBtn" id="mbT">T</button>
+  <button class="mobileBtn" id="mbZ">Z</button><button class="mobileBtn" id="mbX">X</button><button class="mobileBtn" id="mbC">C</button><button class="mobileBtn" id="mbF">F</button>
+  <button class="mobileBtn" id="mbUp">▲</button><button class="mobileBtn" id="mbDown">▼</button>
+</div>
+<script id="mobileControlsScript">
+(function(){
+ const c=document.getElementById('mobileControls'), stick=document.getElementById('mobileStick'), knob=document.getElementById('mobileStickKnob');
+ if(!c||!stick||!knob)return;
+ function press(code){keys[code]=true;}
+ function release(code){keys[code]=false;}
+ function action(code){ if(code==='KeyT'){toggleLockOn();return;} if(code==='KeyQ'){startDash();return;} if(code==='KeyR'){flashStep();return;} if(['KeyZ','KeyX','KeyC','KeyF'].includes(code)){startSkill(code.slice(3));return;} }
+ function bind(id,code){const b=document.getElementById(id); if(!b)return; b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture?.(e.pointerId);action(code);press(code)}); b.addEventListener('pointerup',e=>{e.preventDefault();release(code)}); b.addEventListener('pointercancel',()=>release(code));}
+ bind('mbQ','KeyQ');bind('mbR','KeyR');bind('mbT','KeyT');bind('mbZ','KeyZ');bind('mbX','KeyX');bind('mbC','KeyC');bind('mbF','KeyF');bind('mbUp','Space');bind('mbDown','ControlLeft');
+ const atk=document.getElementById('mbAttack'); atk?.addEventListener('pointerdown',e=>{e.preventDefault();atk.setPointerCapture?.(e.pointerId);startM1();});
+ let active=null;
+ function stickMove(e){const r=stick.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;let dx=e.clientX-cx,dy=e.clientY-cy;const max=r.width*.34,len=Math.hypot(dx,dy)||1;if(len>max){dx=dx/len*max;dy=dy/len*max}knob.style.transform=`translate(${dx}px,${dy}px)`;const nx=dx/max,ny=dy/max;keys.KeyW=ny<-.22;keys.KeyS=ny>.22;keys.KeyA=nx<-.22;keys.KeyD=nx>.22;}
+ stick.addEventListener('pointerdown',e=>{e.preventDefault();active=e.pointerId;stick.setPointerCapture?.(e.pointerId);stickMove(e)});stick.addEventListener('pointermove',e=>{if(e.pointerId===active)stickMove(e)});function stickUp(e){if(e.pointerId!==active)return;active=null;knob.style.transform='translate(0,0)';keys.KeyW=keys.KeyS=keys.KeyA=keys.KeyD=false}stick.addEventListener('pointerup',stickUp);stick.addEventListener('pointercancel',stickUp);
+ // Touch devices should not wait for mouse pointer-lock.
+ window.addEventListener('touchstart',()=>{mouseLocked=true;},{passive:true});
+})();
+</script>
 
 <!-- =====================================================
      HUD
@@ -892,6 +950,22 @@ document.getElementById("farmBackButton")?.addEventListener("click",()=>{
 
 
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style id="fishSelectionCss">
+/* STEP35 FISH SELECTION */
+#fishSelectPanel{position:fixed;inset:0;background:rgba(2,16,28,.96);z-index:150;display:none;align-items:center;justify-content:center;color:white;padding:20px;overflow:auto}
+#fishSelectBox{width:min(1000px,96vw);max-height:92vh;overflow:auto;background:linear-gradient(180deg,rgba(10,43,62,.98),rgba(5,24,38,.98));border:1px solid rgba(255,255,255,.22);border-radius:24px;padding:24px;box-shadow:0 25px 90px #000}
+#fishSelectBox h2{margin:0 0 6px;font-size:30px}
+#fishSelectHint{opacity:.75;margin:0 0 18px}
+#fishGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.fishCard{position:relative;text-align:left;background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.12);border-radius:16px;padding:14px;color:white;cursor:pointer;transition:.15s;min-height:150px}
+.fishCard:hover{transform:translateY(-2px);background:rgba(255,255,255,.10)}
+.fishCard.selected{border-color:#4dd8ff;box-shadow:0 0 0 2px rgba(77,216,255,.18),0 0 25px rgba(77,216,255,.2)}
+.fishEmoji{font-size:48px;line-height:1}
+.fishName{font-size:17px;font-weight:bold;margin-top:5px}.fishMeta{font-size:12px;opacity:.78;line-height:1.55;margin-top:5px}
+.fishPower{margin-top:8px;font-size:12px;color:#b9efff}
+#selectedFishInfo{margin-top:16px;padding:12px;border-radius:12px;background:rgba(0,0,0,.25);font-size:14px}
+#fishSelectClose{margin-top:14px;border:0;border-radius:12px;padding:12px 26px;background:#26aeea;color:white;font-weight:bold;cursor:pointer}
+</style>
 <script type="module">
 
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
@@ -1425,6 +1499,7 @@ enemy.position.set(
 ===================================================== */
 
 let farmData=null;
+let selectedFishId=null;
 
 
 try{
@@ -1482,16 +1557,13 @@ function getPowerFromFarm(){
     }
 
 
-    const strongest =
-        [...farmData.fishes]
-        .sort(
-            (a,b)=>
-                score(b)-score(a)
-        )[0];
+    let strongest = farmData.fishes.find(f=>String(f.id)===String(selectedFishId));
+    if(!strongest){
+        strongest=[...farmData.fishes].sort((a,b)=>score(b)-score(a))[0];
+        selectedFishId=strongest?.id ?? null;
+    }
 
-
-    const individualScore =
-        score(strongest);
+    const individualScore = score(strongest);
 
 
     let rank="D";
@@ -1563,15 +1635,12 @@ function getPowerFromFarm(){
 }
 
 
-const power =
+let power =
     getPowerFromFarm();
 
 /* Farm individual size now influences the 3D model. */
 if(farmData && Array.isArray(farmData.fishes) && farmData.fishes.length){
-    const visualFish=[...farmData.fishes].sort((a,b)=>
-        (Number(b.growthGene||50)+Number(b.vitalityGene||50)+Number(b.breedingGene||50))-
-        (Number(a.growthGene||50)+Number(a.vitalityGene||50)+Number(a.breedingGene||50))
-    )[0];
+    const visualFish=farmData.fishes.find(f=>String(f.id)===String(selectedFishId)) || farmData.fishes[0];
     const visualScale=THREE.MathUtils.clamp(Number(visualFish.size||10)/10,.78,1.65);
     player.scale.setScalar(visualScale);
 }
@@ -1580,7 +1649,7 @@ if(farmData && Array.isArray(farmData.fishes) && farmData.fishes.length){
 enemy.scale.setScalar(.92);
 
 
-const maxPlayerHP =
+let maxPlayerHP =
     power.hp;
 
 
@@ -1635,6 +1704,8 @@ let onlinePingMs=0;
 let onlineStateSeq=0;
 let onlineRemoteSeq=0;
 let onlineMatchOver=false;
+let onlineRemoteRematchReady=false;
+let onlineRematchStarting=false;
 let onlineRematchReady=false;
 let onlineRemoteState={
     x:0,y:0,z:-18,rot:0,hp:1200,alive:true,stun:0,attack:"",action:""
@@ -1764,7 +1835,32 @@ function showPvpResult(win,reason){
 }
 function finishOnlineWin(){if(onlineMatchOver)return; onlineSend({type:"matchResult",result:"lose"}); showPvpResult(true,"相手マンボウをKOしました！");}
 function finishOnlineLose(){if(onlineMatchOver)return; onlineSend({type:"matchResult",result:"win"}); showPvpResult(false,"あなたのマンボウがKOされました。");}
-function requestRematch(){if(!onlineConnected){onlineStatus("🔴 相手との接続が切れています。");return;} onlineRematchReady=true; onlineSend({type:"rematch"}); onlineStatus("🟡 相手の再戦を待っています…");}
+function requestRematch(){
+    if(!onlineConnected){onlineStatus("🔴 相手との接続が切れています。");return;}
+    if(onlineRematchReady)return;
+    onlineRematchReady=true;
+    onlineSend({type:"rematch"});
+    onlineStatus("🟡 両者が再戦を押すと、次の試合を開始します…");
+}
+function startOnlineRematch(){
+    if(onlineRematchStarting)return;
+    onlineRematchStarting=true;
+    onlineMatchOver=false;
+    onlineBattleLive=false; onlineCountdownActive=false;
+    playerHP=maxPlayerHP; enemyHP=enemyMaxHP; enemyAlive=true; enemy.visible=true;
+    player.position.set(0,0,0); enemy.position.set(0,0,-18);
+    playerStun=0; enemyStun=0; damageInvuln=0; attackHitFlash=0; hitStop=0; cameraShake=0;
+    activeSkill=null; isAttacking=false; attackPhase="none"; attackLock=0; comboIndex=0; comboTimer=0; m1Buffered=false; m1BufferTime=0;
+    dashTimer=0; dashCooldown=0; flashCooldown=0; playerInvincible=0; enemyAttackCooldown=0; enemyDecisionTimer=0;
+    skillCooldowns.Z=skillCooldowns.X=skillCooldowns.C=skillCooldowns.F=0;
+    onlineRemoteSeq=0; onlineStateSeq=0; onlineRemoteActionLast="";
+    updatePlayerHUD(); updateEnemyHUD();
+    const result=document.getElementById("pvpResult"); if(result)result.style.display="none";
+    if(onlineRole==="host") onlineSend({type:"rematchStart"});
+    runOnlineCountdown();
+    onlineRematchReady=false; onlineRemoteRematchReady=false;
+    setTimeout(()=>onlineRematchStarting=false,500);
+}
 
 function updateOnlineNetHud(){
     const nh=document.getElementById("onlineNetHud"), tx=document.getElementById("onlineNetText");
@@ -1860,8 +1956,22 @@ function onlineReceive(data){
     }
 
     if(data.type==="matchResult"){ if(data.result==="lose") finishOnlineWin(); else finishOnlineLose(); return; }
-    if(data.type==="rematch"){ onlineSend({type:"rematchAck"}); if(onlineRematchReady){ location.reload(); } else onlineStatus("🔵 相手が再戦を希望しています。"); return; }
-    if(data.type==="rematchAck"){ if(onlineRematchReady) location.reload(); return; }
+    if(data.type==="rematch"){
+        onlineRemoteRematchReady=true;
+        onlineSend({type:"rematchAck"});
+        if(onlineRematchReady && onlineRole==="host") startOnlineRematch();
+        else onlineStatus("🔵 相手も再戦を希望しています。まもなく開始します！");
+        return;
+    }
+    if(data.type==="rematchAck"){
+        onlineRemoteRematchReady=true;
+        if(onlineRematchReady && onlineRole==="host") startOnlineRematch();
+        return;
+    }
+    if(data.type==="rematchStart"){
+        if(!onlineRematchStarting) startOnlineRematch();
+        return;
+    }
 
     if(data.type==="remoteDeath"){
         playerHP=0;
@@ -1893,7 +2003,8 @@ function runOnlineCountdown(){
             overlay.style.display="none";
             onlineCountdownActive=false;
             onlineBattleLive=true;
-            document.body.requestPointerLock?.();
+            if(!matchMedia("(pointer:coarse)").matches) document.body.requestPointerLock?.();
+            mouseLocked = matchMedia("(pointer:coarse)").matches ? true : mouseLocked;
             updateOnlineNetHud();
             onlineStatus("⚔️ ONLINE BATTLE START!");
             return;
@@ -2231,10 +2342,8 @@ document.addEventListener(
     "click",
     ()=>{
 
-        if(!mouseLocked){
-
+        if(!mouseLocked && !matchMedia("(pointer:coarse)").matches){
             document.body.requestPointerLock();
-
         }
 
     }
@@ -2400,7 +2509,7 @@ window.addEventListener(
         if(e.button!==0)
             return;
 
-        if(!mouseLocked)
+        if(!mouseLocked && !matchMedia("(pointer:coarse)").matches)
             return;
 
         startM1();
@@ -5280,6 +5389,9 @@ window.addEventListener(
 );
 
 
+
+</script>
+<style id="fishSelectionCss">
 /* =====================================================
    START
 ===================================================== */
@@ -5315,6 +5427,47 @@ const pvpLobbyBtn=document.getElementById("pvpLobbyBtn");
 if(pvpRematchBtn) pvpRematchBtn.addEventListener("click",requestRematch);
 if(pvpLobbyBtn) pvpLobbyBtn.addEventListener("click",()=>{document.getElementById("pvpResult").style.display="none";onlineMode=false;resetOnlineConnection();document.getElementById("onlinePanel").style.display="flex";});
 
+const selectFishBtn=document.getElementById("selectFishBtn");
+const fishSelectPanel=document.getElementById("fishSelectPanel");
+const fishGrid=document.getElementById("fishGrid");
+const fishSelectClose=document.getElementById("fishSelectClose");
+const selectedFishSummary=document.getElementById("selectedFishSummary");
+const selectedFishInfo=document.getElementById("selectedFishInfo");
+
+function fishScoreValue(f){return Number(f.growthGene||50)+Number(f.vitalityGene||50)+Number(f.breedingGene||50);}
+function fishGradeValue(f){const x=fishScoreValue(f);return x>=270?'S':x>=225?'A':x>=165?'B':x>=105?'C':'D';}
+function fishPowerPreview(f){const score=fishScoreValue(f);return Math.round(80+Number(f.size||10)*4+Number(f.weight||10)*.8+Number(f.breed||1)*3+score*.45);}
+function fishRarityText(f){return f?.rarityName || f?.rarity || 'ノーマル';}
+function renderFishSelection(){
+  if(!fishGrid) return;
+  fishGrid.innerHTML='';
+  const fishes=(farmData&&Array.isArray(farmData.fishes))?[...farmData.fishes]:[];
+  fishes.sort((a,b)=>fishScoreValue(b)-fishScoreValue(a));
+  if(!fishes.length){
+    fishGrid.innerHTML='<div style="opacity:.8;padding:20px">Farmにマンボウがいません。先にFarmでマンボウを育ててください。</div>';
+    return;
+  }
+  if(selectedFishId==null) selectedFishId=fishes[0].id;
+  fishes.forEach(f=>{
+    const card=document.createElement('button'); card.type='button'; card.className='fishCard'+(String(f.id)===String(selectedFishId)?' selected':'');
+    card.innerHTML=`<div class="fishEmoji">🐟</div><div class="fishName">マンボウ #${f.id}</div><div class="fishMeta">${fishRarityText(f)} / 個体値 ${fishGradeValue(f)}<br>体力 ${Math.round(f.health||0)} / サイズ ${Number(f.size||0).toFixed(1)}</div><div class="fishPower">⚔️ 戦闘力 ${fishPowerPreview(f)}</div>`;
+    card.addEventListener('click',()=>{selectedFishId=f.id; renderFishSelection();});
+    fishGrid.appendChild(card);
+  });
+  const chosen=fishes.find(f=>String(f.id)===String(selectedFishId))||fishes[0];
+  if(chosen){selectedFishInfo.innerHTML=`選択中：<b>🐟 マンボウ #${chosen.id}</b>　${fishRarityText(chosen)}　個体値 <b>${fishGradeValue(chosen)}</b>　⚔️戦闘力 <b>${fishPowerPreview(chosen)}</b>`;}
+}
+function confirmFishSelection(){
+  if(!selectedFishId && farmData?.fishes?.length) selectedFishId=farmData.fishes[0].id;
+  const chosen=farmData?.fishes?.find(f=>String(f.id)===String(selectedFishId));
+  if(chosen && selectedFishSummary) selectedFishSummary.textContent=`出撃：🐟 マンボウ #${chosen.id} / ${fishRarityText(chosen)} / 個体値 ${fishGradeValue(chosen)}`;
+  power=getPowerFromFarm();
+  playerAttack=power.attack; playerDefense=power.defense; maxPlayerHP=power.hp; playerHP=Math.min(playerHP,maxPlayerHP); updatePlayerHUD();
+}
+if(selectFishBtn){selectFishBtn.addEventListener('click',()=>{renderFishSelection();fishSelectPanel.style.display='flex';});}
+if(fishSelectClose){fishSelectClose.addEventListener('click',()=>{fishSelectPanel.style.display='none';confirmFishSelection();});}
+if(farmData?.fishes?.length){selectedFishId=[...farmData.fishes].sort((a,b)=>fishScoreValue(b)-fishScoreValue(a))[0].id;confirmFishSelection();}
+
 const startBtn = document.getElementById("startBtn");
 const startScreen = document.getElementById("start");
 
@@ -5323,7 +5476,7 @@ function startBattle(){
     if(!startScreen) return;
     startScreen.style.display = "none";
     startScreen.style.pointerEvents = "none";
-    if(document.body.requestPointerLock){
+    if(!matchMedia("(pointer:coarse)").matches && document.body.requestPointerLock){
         document.body.requestPointerLock();
     }
 }
