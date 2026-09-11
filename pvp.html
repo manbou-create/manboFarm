@@ -699,8 +699,8 @@ body.inBattle button, body.inBattle input { cursor:none !important; }
             WASD：移動<br>
             左クリック：M1コンボ<br>
             T：ロックオン<br>
-            Z：水弾<br>
-            X：突進<br>
+            Z：マンボウビーム<br>
+            X：海底潜り→ざぶーん！<br>
             C：回転アタック<br>
             F：高速突撃<br>
             Q：ダッシュ<br>
@@ -812,10 +812,18 @@ body.inBattle button, body.inBattle input { cursor:none !important; }
 <div id="pvpResult"><div id="pvpResultBox"><div id="pvpResultTitle">VICTORY</div><div id="pvpResultText"></div><div id="rankResult"><div class="rankDelta" id="rankDelta"></div><div class="rankStats" id="rankStats"></div></div><button class="pvpResultBtn" id="pvpRematchBtn">🔄 再戦</button><button class="pvpResultBtn" id="pvpLobbyBtn">🚪 ロビーへ</button></div></div>
 
 
+<style id="counterButtonFix">
+#counterActionButton{position:fixed;right:24px;bottom:230px;z-index:300;width:82px;height:82px;border-radius:50%;border:2px solid rgba(170,240,255,.75);background:radial-gradient(circle,rgba(35,150,205,.95),rgba(8,45,70,.96));color:#fff;font-size:30px;font-weight:900;box-shadow:0 0 24px rgba(70,210,255,.35),0 10px 30px rgba(0,0,0,.4);cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
+#counterActionButton .counterSmall{display:block;font-size:11px;letter-spacing:.5px;margin-top:-2px}
+#counterActionButton:active{transform:scale(.9);filter:brightness(1.3)}
+@media(max-width:800px){#counterActionButton{right:22px;bottom:325px;width:74px;height:74px;font-size:26px}}
+</style>
+<button id="counterActionButton" type="button" aria-label="ブロック">🛡️<span class="counterSmall">BLOCK</span></button>
+
 <!-- Mobile / Tablet controls -->
 <div id="mobileControls">
   <div id="mobileStick"><div id="mobileStickKnob"></div></div>
-  <button class="mobileBtn" id="mbAttack">⚔️</button>
+  <button class="mobileBtn" id="mbAttack">⚔️</button><button class="mobileBtn" id="mbBlock">🛡️</button>
   <button class="mobileBtn" id="mbQ">Q</button><button class="mobileBtn" id="mbR">R</button><button class="mobileBtn" id="mbT">T</button>
   <button class="mobileBtn" id="mbZ">Z</button><button class="mobileBtn" id="mbX">X</button><button class="mobileBtn" id="mbC">C</button><button class="mobileBtn" id="mbF">F</button>
   <button class="mobileBtn" id="mbUp">▲</button><button class="mobileBtn" id="mbDown">▼</button>
@@ -910,13 +918,13 @@ body.inBattle button, body.inBattle input { cursor:none !important; }
 
     <div class="skill" id="skillZ">
         <div class="skillKey">Z</div>
-        <div class="skillName">水弾</div>
+        <div class="skillName">マンボウビーム</div>
         <div class="cooldown" id="coolZ"></div>
     </div>
 
     <div class="skill" id="skillX">
         <div class="skillKey">X</div>
-        <div class="skillName">突進</div>
+        <div class="skillName">ざぶーん！</div>
         <div class="cooldown" id="coolX"></div>
     </div>
 
@@ -945,8 +953,8 @@ body.inBattle button, body.inBattle input { cursor:none !important; }
     マウス：カメラ<br>
     左クリック：M1<br>
     T：ロックオン<br>
-    Z：水弾<br>
-    X：突進<br>
+    Z：マンボウビーム<br>
+    X：海底潜り→ざぶーん！<br>
     C：回転攻撃<br>
     F：高速突撃<br>
     Q：ダッシュ<br>
@@ -1762,7 +1770,7 @@ function resetOnlineConnection(){
     onlineConnected=false;
     onlineReady=false;
     onlineRemoteReady=false;
-    onlinePingSent=0; onlinePingMs=0; onlineStateSeq=0; onlineRemoteSeq=0;
+    onlinePingSent=0; onlinePingMs=0; onlineStateSeq=0; onlineRemoteSeq=0; onlineRemoteBlockActive=false; lastOnlineOutgoingHitDamage=0; lastOnlineOutgoingHitTime=0; blockActive=false; blockActiveTime=0; blockCooldown=0;
     const nh=document.getElementById("onlineNetHud"); if(nh) nh.style.display="none";
 }
 
@@ -1958,9 +1966,32 @@ function onlineReceive(data){
         return;
     }
 
+    if(data.type==="block"){
+        onlineRemoteBlockActive=data.active===true;
+        return;
+    }
+
+    if(data.type==="blockSuccess"){
+        onlineRemoteBlockActive=false;
+        if(lastOnlineOutgoingHitDamage>0 && performance.now()-lastOnlineOutgoingHitTime<650){
+            enemyHP=Math.min(maxEnemyHP,enemyHP+lastOnlineOutgoingHitDamage);
+            updateEnemyHUD();
+            showOnlineCombatEvent("🛡️ ATTACK PARRIED");
+        }
+        lastOnlineOutgoingHitDamage=0;
+        createCounterEffect(enemy.position.clone(),true);
+        cameraShake=Math.max(cameraShake,.35);
+        hitStop=Math.max(hitStop,.10);
+        return;
+    }
+
     if(data.type==="hit"){
         if(!onlineMode) return;
         const dmg=Math.max(1,Math.floor(Number(data.damage)||1));
+        if(blockActive){
+            succeedBlock();
+            return;
+        }
         if(damageInvuln>0) return;
         enemyHP=Math.max(0,enemyHP-dmg);
         enemyStun=Math.max(enemyStun,Number(data.stun)||0);
@@ -2133,7 +2164,15 @@ let comboLinkWindow=0;
 let damageInvuln=0;
 let attackHitFlash=0;
 let lastRemoteHp=1200;
-let counterHitWindow=0;
+let blockHitWindow=0;
+let blockCooldown=0;
+const BLOCK_SUCCESS_COOLDOWN=0.0;
+let blockActive=false;
+let blockActiveTime=0;
+let blockSuccessCount=0;
+let onlineRemoteBlockActive=false;
+let lastOnlineOutgoingHitDamage=0;
+let lastOnlineOutgoingHitTime=0;
 let lastRemoteAction="";
 let dangerShown=false;
 
@@ -2251,17 +2290,17 @@ const airAttack={
 const skills={
 
     Z:{
-        name:"水弾",
-        cooldown:2.5,
-        damage:1.45,
-        stun:.35
+        name:"マンボウビーム",
+        cooldown:10,
+        damage:2.15,
+        stun:.45
     },
 
     X:{
-        name:"突進",
-        cooldown:4,
-        damage:1.9,
-        stun:.55
+        name:"ざぶーん！",
+        cooldown:12,
+        damage:2.45,
+        stun:.8
     },
 
     C:{
@@ -2294,6 +2333,7 @@ let activeSkill=null;
 let skillTimer=0;
 
 let skillHit=false;
+let activeSkillData=null;
 
 
 /* =====================================================
@@ -2529,6 +2569,101 @@ function faceEnemy(){
 
 }
 
+
+/* =====================================================
+   BLOCK / PARRY
+===================================================== */
+function createCounterEffect(pos, success=false){
+    const ring=new THREE.Mesh(
+        new THREE.TorusGeometry(success?1.35:1.05,.10,10,48),
+        new THREE.MeshBasicMaterial({
+            color:success?0xffe36b:0x8ff5ff,
+            transparent:true,
+            opacity:.95
+        })
+    );
+    ring.position.copy(pos); ring.rotation.x=Math.PI/2;
+    ring.userData.life=success?.55:.32;
+    ring.userData.ringExpand=success?9:5;
+    scene.add(ring); hitParticles.push(ring);
+    for(let i=0;i<(success?28:18);i++){
+        const p=new THREE.Mesh(
+            new THREE.SphereGeometry(success?.12:.075,6,6),
+            new THREE.MeshBasicMaterial({color:success?0xffdf69:0x9ff7ff,transparent:true,opacity:.95})
+        );
+        p.position.copy(pos);
+        p.userData.life=success?.55:.32;
+        p.userData.velocity=new THREE.Vector3((Math.random()-.5)*12,(Math.random()-.5)*12,(Math.random()-.5)*12);
+        scene.add(p); hitParticles.push(p);
+    }
+}
+
+function startBlock(){
+    if(!gameStarted || (onlineMode && !onlineBattleLive) || blockCooldown>0 || blockActive || playerStun>0) return;
+    blockActive=true;
+    blockActiveTime=.30;
+    blockHitWindow=.30;
+    createCounterEffect(player.position.clone(),false);
+    showOnlineCombatEvent("🛡️ BLOCK READY");
+    if(onlineMode && onlineConnected) onlineSend({type:"block",active:true});
+}
+
+function setupCounterButtons(){
+    const fire=()=>startBlock();
+    const desktop=document.getElementById("counterActionButton");
+    const mobile=document.getElementById("mbBlock");
+    for(const btn of [desktop,mobile]){
+        if(!btn) continue;
+        btn.addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();fire();},{passive:false});
+        btn.addEventListener("touchstart",e=>{e.preventDefault();e.stopPropagation();fire();},{passive:false});
+        btn.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();fire();});
+    }
+}
+
+function succeedBlock(){
+    if(!blockActive && blockCooldown>0) return;
+    blockActive=false;
+    blockActiveTime=0;
+    blockHitWindow=0;
+    blockCooldown=0;
+    blockSuccessCount++;
+    createCounterEffect(player.position.clone(),true);
+    const cf=document.getElementById("counterFlash");
+    if(cf){ cf.textContent="BLOCK!"; cf.classList.remove("show"); void cf.offsetWidth; cf.classList.add("show"); }
+    showOnlineCombatEvent("⚡ BLOCK SUCCESS  READY");
+    cameraShake=Math.max(cameraShake,.42);
+    hitStop=Math.max(hitStop,.12);
+    if(onlineMode && onlineConnected) onlineSend({type:"blockSuccess"});
+}
+
+function failBlock(){
+    if(!blockActive) return;
+    blockActive=false;
+    blockActiveTime=0;
+    blockHitWindow=0;
+    blockCooldown=3;
+    showOnlineCombatEvent("🛡️ BLOCK MISS  3.0s");
+    if(onlineMode && onlineConnected) onlineSend({type:"block",active:false});
+}
+
+function updateBlock(dt){
+    if(blockCooldown>0) blockCooldown=Math.max(0,blockCooldown-dt);
+    if(blockActive){
+        blockActiveTime-=dt;
+        blockHitWindow=Math.max(0,blockActiveTime);
+        if(blockActiveTime<=0) failBlock();
+    }
+    const ch=document.getElementById("blockHud");
+    if(ch){
+        if(blockActive) ch.textContent="🛡️ BLOCK ACTIVE";
+        else if(blockCooldown>0) ch.textContent=`🛡️ BLOCK ${blockCooldown.toFixed(1)}s`;
+        else ch.textContent="🛡️ BLOCK READY";
+    }
+}
+
+window.addEventListener("keydown",e=>{
+    if(e.code==="KeyE" && !e.repeat) startBlock();
+});
 
 /* =====================================================
    M1
@@ -2879,21 +3014,6 @@ function performAttackHit(){
             attack.damage
         );
 
-    // 相手の攻撃中に差し込めたらカウンターヒット
-    const counterEligible = onlineMode && onlineConnected && counterHitWindow>0 && !!(onlineRemoteState.attack||"");
-    if(counterEligible){
-        damage=Math.round(damage*1.35);
-        const cf=document.getElementById("counterFlash");
-        if(cf){
-            cf.textContent="COUNTER HIT!";
-            cf.classList.remove("show"); void cf.offsetWidth; cf.classList.add("show");
-        }
-        showPvpEvent("⚡ COUNTER HIT");
-        cameraShake=Math.max(cameraShake,.28);
-        hitStop=Math.max(hitStop,.09);
-    }
-
-
     damageEnemy(
         damage,
         attack.knockback,
@@ -2923,7 +3043,18 @@ function damageEnemy(
         return;
 
     if(onlineMode && onlineConnected){
-        onlineSend({type:"hit",damage:Math.max(1,Math.floor(damage)),stun:Number(stun)||0,effect:effectIndex,knockback:Number(knockback)||0,hitStop:effectIndex===4?.11:.065,shake:effectIndex===4?.40:.18});
+        if(onlineRemoteBlockActive){
+            onlineRemoteBlockActive=false;
+            onlineSend({type:"blockSuccess"});
+            showOnlineCombatEvent("⚡ BLOCKED");
+            createCounterEffect(enemy.position.clone(),true);
+            cameraShake=Math.max(cameraShake,.32);
+            hitStop=Math.max(hitStop,.10);
+            return;
+        }
+        lastOnlineOutgoingHitDamage=Math.max(1,Math.floor(damage));
+        lastOnlineOutgoingHitTime=performance.now();
+        onlineSend({type:"hit",damage:lastOnlineOutgoingHitDamage,stun:Number(stun)||0,effect:effectIndex,knockback:Number(knockback)||0,hitStop:effectIndex===4?.11:.065,shake:effectIndex===4?.40:.18});
     }
 
     enemyHP =
@@ -3073,212 +3204,235 @@ function updateSkills(dt){
     if(!activeSkill)
         return;
 
-
     skillTimer+=dt;
 
-
-    const key =
-        activeSkill;
-
+    const key=activeSkill;
 
     /* ============================
-       Z
+       Z : マンボウビーム
+       前方へ極太ビームを一閃
     ============================ */
-
     if(key==="Z"){
 
-        if(
-            skillTimer>=.12 &&
-            !skillHit
-        ){
-
+        if(skillTimer>=.12 && !skillHit){
             skillHit=true;
 
-            createWaterProjectile();
+            const dir=getForwardDirection();
+            createSunfishBeam(player.position.clone(),dir);
 
+            // ビームの当たり判定：前方の細長い範囲
+            if(enemyAlive){
+                const toEnemy=enemy.position.clone().sub(player.position);
+                const forwardDist=toEnemy.dot(dir);
+                const sideDist=toEnemy.clone().sub(dir.clone().multiplyScalar(forwardDist)).length();
+
+                if(forwardDist>0 && forwardDist<24 && sideDist<2.15){
+                    damageEnemy(
+                        Math.round(playerAttack*skills.Z.damage),
+                        7,
+                        skills.Z.stun,
+                        player.position.clone().add(dir.clone().multiplyScalar(Math.min(12,forwardDist))),
+                        4
+                    );
+                }
+            }
         }
 
-
-        if(skillTimer>=.55){
-
+        if(skillTimer>=.62){
             activeSkill=null;
-
         }
-
     }
 
-
     /* ============================
-       X
+       X : 海底潜り→ざぶーん！
+       一度下へ潜り、相手の真下から急上昇
     ============================ */
-
     else if(key==="X"){
 
-        if(skillTimer<.32){
-
-            const dir =
-                getForwardDirection();
-
-
-            player.position.add(
-                dir.multiplyScalar(
-                    25*dt
-                )
-            );
-
+        if(!activeSkillData){
+            activeSkillData={
+                target:enemy.position.clone(),
+                phase:"dive"
+            };
         }
 
+        const data=activeSkillData;
 
-        if(
-            skillTimer>=.10 &&
-            !skillHit
-        ){
+        if(data.phase==="dive"){
+            const dir=getForwardDirection();
+            player.position.add(dir.clone().multiplyScalar(7.5*dt));
+            player.position.y-=28*dt;
 
-            if(
-                player.position.distanceTo(
-                    enemy.position
-                )<7
-            ){
-
-                skillHit=true;
-
-
-                damageEnemy(
-                    Math.round(
-                        playerAttack*
-                        skills.X.damage
-                    ),
-                    8,
-                    skills.X.stun,
-                    player.position,
-                    4
-                );
-
+            if(Math.random()<.55){
+                createWaterSplash(player.position.clone(),5,.65);
             }
 
+            if(skillTimer>=.24){
+                data.phase="rise";
+                data.riseStart=player.position.clone();
+                data.target=enemyAlive?enemy.position.clone():data.target;
+                data.riseTarget=new THREE.Vector3(data.target.x,data.target.y+.35,data.target.z);
+                player.position.x=data.target.x;
+                player.position.z=data.target.z;
+                player.position.y=data.target.y-6;
+                createWaterSplash(player.position.clone(),18,1.4);
+            }
+        }
+        else if(data.phase==="rise"){
+            const riseT=Math.min(1,(skillTimer-.24)/.22);
+            player.position.y=THREE.MathUtils.lerp(data.target.y-6,data.target.y+.35,riseT);
+
+            if(riseT>.45 && !skillHit){
+                skillHit=true;
+                createWaterSplash(player.position.clone(),34,2.4);
+
+                if(enemyAlive && player.position.distanceTo(enemy.position)<7.5){
+                    damageEnemy(
+                        Math.round(playerAttack*skills.X.damage),
+                        14,
+                        skills.X.stun,
+                        player.position.clone(),
+                        6
+                    );
+                }
+            }
         }
 
-
-        if(skillTimer>=.38){
-
+        if(skillTimer>=.68){
             activeSkill=null;
-
+            activeSkillData=null;
         }
-
     }
 
-
     /* ============================
-       C
+       C : 回転
     ============================ */
-
     else if(key==="C"){
 
-        player.rotation.y +=
-            dt*18;
+        player.rotation.y+=dt*18;
 
-
-        if(
-            skillTimer>=.08 &&
-            skillTimer<=.28 &&
-            !skillHit
-        ){
-
-            if(
-                player.position.distanceTo(
-                    enemy.position
-                )<9
-            ){
-
+        if(skillTimer>=.08 && skillTimer<=.28 && !skillHit){
+            if(player.position.distanceTo(enemy.position)<9){
                 skillHit=true;
-
-
                 damageEnemy(
-                    Math.round(
-                        playerAttack*
-                        skills.C.damage
-                    ),
+                    Math.round(playerAttack*skills.C.damage),
                     6,
                     skills.C.stun,
                     player.position,
                     3
                 );
-
             }
-
         }
-
 
         if(skillTimer>=.45){
-
             activeSkill=null;
-
         }
-
     }
 
-
     /* ============================
-       F
+       F : 高速突撃
     ============================ */
-
     else if(key==="F"){
 
         if(skillTimer<.42){
-
-            const dir =
-                getForwardDirection();
-
-
-            player.position.add(
-                dir.multiplyScalar(
-                    36*dt
-                )
-            );
-
+            const dir=getForwardDirection();
+            player.position.add(dir.multiplyScalar(36*dt));
         }
 
-
-        if(
-            skillTimer>=.08 &&
-            !skillHit
-        ){
-
-            if(
-                player.position.distanceTo(
-                    enemy.position
-                )<7.5
-            ){
-
+        if(skillTimer>=.08 && !skillHit){
+            if(player.position.distanceTo(enemy.position)<7.5){
                 skillHit=true;
-
-
                 damageEnemy(
-                    Math.round(
-                        playerAttack*
-                        skills.F.damage
-                    ),
+                    Math.round(playerAttack*skills.F.damage),
                     12,
                     skills.F.stun,
                     player.position,
                     4
                 );
-
             }
-
         }
-
 
         if(skillTimer>=.48){
-
             activeSkill=null;
-
         }
-
     }
 
+    if(!activeSkill){
+        activeSkillData=null;
+    }
 }
 
+
+/* =====================================================
+   Z / X CINEMATIC EFFECTS
+===================================================== */
+
+function createSunfishBeam(pos,dir){
+    const group=new THREE.Group();
+
+    const beam=new THREE.Mesh(
+        new THREE.CylinderGeometry(.42,.75,22,20,1,true),
+        new THREE.MeshBasicMaterial({color:0x6ee7ff,transparent:true,opacity:.82,blending:THREE.AdditiveBlending,side:THREE.DoubleSide})
+    );
+    beam.rotation.z=Math.PI/2;
+    beam.position.z=11;
+    group.add(beam);
+
+    const core=new THREE.Mesh(
+        new THREE.CylinderGeometry(.16,.28,22,16,1,true),
+        new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.95,blending:THREE.AdditiveBlending,side:THREE.DoubleSide})
+    );
+    core.rotation.z=Math.PI/2;
+    core.position.z=11;
+    group.add(core);
+
+    group.position.copy(pos).add(dir.clone().multiplyScalar(1.5));
+    group.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),dir);
+    group.userData.life=.28;
+    group.userData.beamPulse=true;
+    scene.add(group);
+
+    hitParticles.push(group);
+
+    for(let i=0;i<20;i++){
+        const p=new THREE.Mesh(
+            new THREE.SphereGeometry(.05+Math.random()*.12,6,6),
+            new THREE.MeshBasicMaterial({color:0x9ff4ff,transparent:true,opacity:.9,blending:THREE.AdditiveBlending})
+        );
+        p.position.copy(pos).add(dir.clone().multiplyScalar(1+Math.random()*18));
+        p.userData.life=.18+Math.random()*.3;
+        p.userData.velocity=new THREE.Vector3((Math.random()-.5)*4,(Math.random()-.5)*4,(Math.random()-.5)*4);
+        scene.add(p);
+        hitParticles.push(p);
+    }
+}
+
+function createWaterSplash(pos,count=20,power=1){
+    const ring=new THREE.Mesh(
+        new THREE.TorusGeometry(.7,.09,10,40),
+        new THREE.MeshBasicMaterial({color:0x75eaff,transparent:true,opacity:.95,blending:THREE.AdditiveBlending})
+    );
+    ring.position.copy(pos);
+    ring.rotation.x=Math.PI/2;
+    ring.userData.life=.42;
+    ring.userData.ringExpand=5*power;
+    scene.add(ring);
+    hitParticles.push(ring);
+
+    for(let i=0;i<count;i++){
+        const p=new THREE.Mesh(
+            new THREE.SphereGeometry(.06+Math.random()*.16,7,7),
+            new THREE.MeshBasicMaterial({color:0x8eefff,transparent:true,opacity:.88,blending:THREE.AdditiveBlending})
+        );
+        p.position.copy(pos);
+        const a=Math.random()*Math.PI*2;
+        const speed=(2+Math.random()*8)*power;
+        p.userData.velocity=new THREE.Vector3(Math.cos(a)*speed,(2+Math.random()*9)*power,Math.sin(a)*speed);
+        p.userData.life=.3+Math.random()*.5;
+        scene.add(p);
+        hitParticles.push(p);
+    }
+}
 
 /* =====================================================
    WATER PROJECTILE
@@ -3491,7 +3645,7 @@ function createSkillStartEffect(key){
 
     const colors={Z:0x5ee7ff,X:0xffd45c,C:0xb36cff,F:0xffffff};
     const color=colors[key]||0xffffff;
-    const count=key==="C"?32:22;
+    const count=key==="C"?32:(key==="Z"?30:(key==="X"?26:22));
 
     // 発動リング
     const ring=new THREE.Mesh(
@@ -3518,6 +3672,22 @@ function createSkillStartEffect(key){
             .add(new THREE.Vector3((Math.random()-.5)*7,(Math.random()-.5)*7,(Math.random()-.5)*7));
         scene.add(p);
         hitParticles.push(p);
+    }
+
+    if(key==="Z"){
+        const charge=new THREE.Mesh(
+            new THREE.SphereGeometry(.9,20,16),
+            new THREE.MeshBasicMaterial({color:0x6ee7ff,transparent:true,opacity:.28,wireframe:true,blending:THREE.AdditiveBlending})
+        );
+        charge.position.copy(player.position).add(getForwardDirection().multiplyScalar(1.1));
+        charge.userData.life=.3;
+        charge.userData.ringExpand=4;
+        scene.add(charge);
+        hitParticles.push(charge);
+    }
+
+    if(key==="X"){
+        createWaterSplash(player.position.clone(),16,1.1);
     }
 
     // Fだけ強い突進オーラ
@@ -4246,8 +4416,9 @@ function remoteOnlineActionEffect(action){
     if(!onlineMode)return;
     if(action==="FINISH") createHitEffect(enemy.position.clone(),4);
     else if(action==="JAB"||action==="CROSS"||action==="HOOK") createHitEffect(enemy.position.clone(),3);
-    else if(action==="Z") createExplosion(enemy.position.clone(),8);
-    else if(action==="X"||action==="F") createHitEffect(enemy.position.clone(),4);
+    else if(action==="Z") createSunfishBeam(enemy.position.clone(),getForwardDirection());
+    else if(action==="X"){ createWaterSplash(enemy.position.clone(),30,2.2); createHitEffect(enemy.position.clone(),4); }
+    else if(action==="F") createHitEffect(enemy.position.clone(),4);
     else if(action==="C") createHitEffect(enemy.position.clone(),3);
 }
 
@@ -4267,7 +4438,7 @@ function updateEnemy(dt){
             enemyStun=Math.max(0,onlineRemoteState.stun||0);
             const remoteAction=onlineRemoteState.action||"";
             if(remoteAction && remoteAction!==onlineRemoteActionLast){
-                counterHitWindow=.34;
+                blockHitWindow=.34;
                 remoteOnlineActionEffect(remoteAction);
             }
             onlineRemoteActionLast=remoteAction;
@@ -4541,6 +4712,10 @@ function enemyAttack(){
             )
         );
 
+    if(blockActive){
+        succeedBlock();
+        return;
+    }
 
     playerHP =
         Math.max(
@@ -4668,7 +4843,7 @@ function updateEnemyCooldown(dt){
    STEP32 TACTICAL TIMERS
 ===================================================== */
 function updateStep32Timers(dt){
-    counterHitWindow=Math.max(0,counterHitWindow-dt);
+    blockHitWindow=Math.max(0,blockHitWindow-dt);
 }
 
 /* =====================================================
@@ -5023,6 +5198,13 @@ function updateParticles(dt){
             p.scale.multiplyScalar(growth);
             p.rotation.z+=dt*4;
         }
+        if(p.userData.beamPulse){
+            const pulse=1+Math.sin((.28-p.userData.life)*42)*.08;
+            p.scale.x=pulse;
+            p.scale.y=pulse;
+            p.scale.z=pulse;
+            p.rotation.z+=dt*5;
+        }
 
         if(p.userData.velocity){
 
@@ -5365,7 +5547,8 @@ function animate(){
                 alive:playerHP>0,
                 stun:playerStun,
                 attack:currentAttack ? currentAttack.name : "",
-                action:activeSkill || (currentAttack ? currentAttack.name : "")
+                action:activeSkill || (currentAttack ? currentAttack.name : ""),
+                counter:blockActive
             });
             if(!onlinePingSent || performance.now()-onlinePingSent>1000){ onlinePingSent=performance.now(); onlineSend({type:"ping",t:onlinePingSent}); }
         }
@@ -5742,7 +5925,10 @@ animate();
 
   refresh();
 })();
+
+setupCounterButtons();
 </script>
 
+<div id="blockHud" style="position:fixed;left:18px;bottom:18px;z-index:999;font-weight:900;font-size:15px;text-shadow:0 2px 8px #000;color:#dffcff;pointer-events:none">🛡️ BLOCK READY</div>
 </body>
 </html>
